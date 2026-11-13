@@ -89,7 +89,74 @@ function req(method, url, body, authTok, cb) {
   x.onload = function() {
     var data = {};
     try { data = JSON.parse(x.responseText); } catch(e) {}
-    cb(x.status >= 200 && x.status '+user.team+'</option>';
+    cb(x.status >= 200 && x.status < 300, data);
+  };
+  x.onerror = function() { cb(false, {error: {message: "WLAN/Netzwerk blockiert"}}); };
+  x.send(body ? JSON.stringify(body) : null);
+}
+
+function go(id) {
+  document.getElementById('v-login').classList.add('hidden');
+  document.getElementById('v-reg').classList.add('hidden');
+  document.getElementById('v-app').classList.add('hidden');
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function roleUI() {
+  var r = document.getElementById('r-role').value;
+  document.getElementById('r-team').classList.toggle('hidden', r !== 'Trainer');
+  document.getElementById('r-code').classList.toggle('hidden', r === 'Eltern' || !r);
+}
+
+function doReg() {
+  var m = document.getElementById('r-msg');
+  var name = document.getElementById('r-name').value.trim();
+  var mail = document.getElementById('r-mail').value.trim();
+  var p1 = document.getElementById('r-p1').value;
+  var p2 = document.getElementById('r-p2').value;
+  var role = document.getElementById('r-role').value;
+  var team = role === 'Trainer' ? document.getElementById('r-team').value : "";
+  var code = document.getElementById('r-code').value.trim();
+  if (!name || !mail || !p1 || !role) { m.innerText = "Alle Felder ausfüllen!"; return; }
+  if (p1 !== p2) { m.innerText = "Passwörter ungleich!"; return; }
+  if (role === 'Trainer' && !team) { m.innerText = "Mannschaft wählen!"; return; }
+  if (role !== 'Eltern' && code !== CODE) { m.innerText = "Falscher Code!"; return; }
+  m.innerText = "Erstelle Konto...";
+  req("POST", "https://googleapis.com" + KEY, {email: mail, password: p1, returnSecureToken: true}, null, function(ok, d) {
+    if (!ok) { m.innerText = "Auth-Fehler: " + (d.error ? d.error.message : "Fehler"); return; }
+    token = d.idToken;
+    req("PATCH", DB_URL + "/users/" + d.localId, {fields: {name: {stringValue: name}, role: {stringValue: role}, team: {stringValue: team}}}, token, function(dbOk, de) {
+      if (!dbOk) { m.innerText = "DB-Fehler: " + (de.error ? de.error.message : "Zugriff verweigert"); return; }
+      m.innerText = ""; user = {name: name, role: role, team: team}; startApp();
+    });
+  });
+}
+    function doLogin() {
+  var m = document.getElementById('l-msg');
+  var mail = document.getElementById('l-mail').value.trim();
+  var pass = document.getElementById('l-pass').value;
+  if (!mail || !pass) { m.innerText = "E-Mail & Passwort eingeben!"; return; }
+  m.innerText = "Logge ein...";
+  req("POST", "https://googleapis.com" + KEY, {email: mail, password: pass, returnSecureToken: true}, null, function(ok, d) {
+    if (!ok) { m.innerText = "Login-Fehler: " + (d.error ? d.error.message : "Falsch"); return; }
+    token = d.idToken;
+    req("GET", DB_URL + "/users/" + d.localId, null, token, function(uOk, uData) {
+      if (!uOk || !uData.fields) { m.innerText = "Kein Profil gefunden!"; return; }
+      m.innerText = ""; user = { name: uData.fields.name.stringValue, role: uData.fields.role.stringValue, team: uData.fields.team ? uData.fields.team.stringValue : "" }; startApp();
+    });
+  });
+}
+
+function doLogout() { token = null; user = null; go('v-login'); }
+
+function startApp() {
+  go('v-app');
+  document.getElementById('u-info').innerText = user.name + " (" + user.role + (user.team ? " - " + user.team : "") + ")";
+  var ed = document.getElementById('ed-box');
+  if (user.role === 'Eltern') { ed.classList.add('hidden'); }
+  else {
+    ed.classList.remove('hidden');
+    if (user.role === 'Trainer') document.getElementById('e-team').innerHTML = '<option value="'+user.team+'">'+user.team+'</option>';
   }
   loadEv();
 }
@@ -143,3 +210,5 @@ function drawCal() {
 </script>
 </body>
 </html>
+
+
