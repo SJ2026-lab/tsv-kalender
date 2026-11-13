@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TSV Vereinskalender</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background-color: #f4f4f9; margin: 0; padding: 15px; display: flex; justify-content: center; }
+    .container { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 850px; }
+    .auth-box { max-width: 360px; margin: 15px auto; text-align: center; }
+    h2 { color: #222; margin-bottom: 20px; }
+    input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+    button { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+    button:active { background-color: #0056b3; }
+    .btn-outline { background-color: #fff; color: #007bff; border: 2px solid #007bff; margin-top: 12px; }
+    .btn-secondary { background-color: #6c757d; width: auto; padding: 8px 15px; }
+    .hidden { display: none !important; }
+    .status-msg { font-size: 0.9rem; margin-top: 10px; font-weight: bold; padding: 8px; border-radius: 6px; }
+    .error { color: #d93025; background: #fce8e6; }
+    .info { color: #0056b3; background: #e8f0fe; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .badge { background: #e9ecef; padding: 5px 12px; border-radius: 15px; font-size: 0.85rem; font-weight: bold; margin-left: 8px; }
+    .calendar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .calendar-controls button { width: auto; padding: 8px 16px; }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    .day-name { font-weight: bold; text-align: center; color: #555; padding-bottom: 5px; font-size: 0.9rem; }
+    .day { min-height: 85px; border: 1px solid #e0e0e0; border-radius: 6px; padding: 5px; background: #fafafa; font-size: 0.85rem; }
+    .day.empty { background: transparent; border: none; }
+    .day-number { font-weight: bold; margin-bottom: 4px; color: #333; }
+    .event-item { background: #007bff; color: white; padding: 4px 6px; border-radius: 4px; font-size: 0.75rem; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; word-break: break-word; }
+    .event-U11 { background: #28a745; }
+    .event-U13 { background: #fd7e14; }
+    .event-U15 { background: #6f42c1; }
+    .event-Alle { background: #17a2b8; }
+    .editor-panel { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .editor-row { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: center; }
+    @media (max-width: 650px) { .editor-row { grid-template-columns: 1fr; } .day { min-height: 65px; } }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- LOGIN -->
+  <div id="login-view" class="auth-box">
+    <h2>TSV Kalender-Login</h2>
+    <input type="email" id="login-email" placeholder="E-Mail-Adresse">
+    <input type="password" id="login-pass" placeholder="Passwort">
+    <button type="button" id="btn-login" onclick="doLogin()">Einloggen</button>
+    <div id="login-status"></div>
+    <button type="button" class="btn-outline" onclick="showView('register-view')">Noch kein Konto? Jetzt registrieren</button>
+  </div>
+
+  <!-- REGISTRIERUNG -->
+  <div id="register-view" class="auth-box hidden">
+    <h2>TSV Registrierung</h2>
+    <input type="text" id="reg-name" placeholder="Vor- und Nachname">
+    <input type="email" id="reg-email" placeholder="E-Mail-Adresse">
+    <input type="password" id="reg-pass1" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="new-password">
+    <input type="password" id="reg-pass2" placeholder="Passwort wiederholen" autocomplete="new-password">
+    
+    <select id="reg-role" onchange="handleRoleChange()">
+      <option value="" disabled selected>Rolle auswählen...</option>
+      <option value="Eltern">Eltern (Nur Ansicht)</option>
+      <option value="Trainer">Trainer (Eigene Mannschaft bearbeiten)</option>
+      <option value="Jugendleiter">Jugendleiter (Alle bearbeiten)</option>
+      <option value="Vorstand">Vorstand / Admin (Alle bearbeiten)</option>
+    </select>
+
+    <select id="reg-team" class="hidden">
+      <option value="" disabled selected>Welche Mannschaft trainierst du?</option>
+      <option value="U11">U11</option>
+      <option value="U13">U13</option>
+      <option value="U15">U15</option>
+    </select>
+
+    <input type="password" id="reg-secret" class="hidden" placeholder="Vereins-Code (Verein2026)">
+
+    <button type="button" id="btn-register" onclick="doRegister()">Konto erstellen</button>
+    <div id="reg-status"></div>
+    <button type="button" class="btn-outline" onclick="showView('login-view')">Bereits registriert? Zum Login</button>
+  </div>
+
+  <!-- KALENDER & DASHBOARD -->
+  <div id="app-view" class="hidden">
+    <div class="top-bar">
+      <div>
+        <strong id="user-greeting">Hallo!</strong>
+        <span class="badge" id="user-badge">Rolle</span>
+      </div>
+      <button type="button" class="btn-secondary" onclick="doLogout()">Ausloggen</button>
+    </div>
+
+    <div id="editor-panel" class="editor-panel hidden">
+      <h4 style="margin-top:0;">Neuen Termin eintragen</h4>
+      <div class="editor-row">
+        <input type="date" id="event-date">
+        <input type="text" id="event-title" placeholder="z.B. Training / Spiel">
+        <select id="event-team">
+          <option value="U11">U11</option>
+          <option value="U13">U13</option>
+          <option value="U15">U15</option>
+          <option value="Alle">Gesamter Verein</option>
+        </select>
+        <button type="button" onclick="doAddEvent()">Speichern</button>
+      </div>
+    </div>
+
+    <div class="calendar-controls">
+      <button type="button" onclick="changeMonth(-1)">&lt; Zurück</button>
+      <h3 id="month-label" style="margin:0;">Monat Jahr</h3>
+      <button type="button" onclick="changeMonth(1)">Vor &gt;</button>
+    </div>
+
+    <div class="calendar-grid">
+      <div class="day-name">Mo</div>
+      <div class="day-name">Di</div>
+      <div class="day-name">Mi</div>
+      <div class="day-name">Do</div>
+      <div class="day-name">Fr</div>
+      <div class="day-name">Sa</div>
+      <div class="day-name">So</div>
+    </div>
+    <div class="calendar-grid" id="calendar-days"></div>
+  </div>
+</div>
+
+<script>
+  var API_KEY = "AIzaSyDATRJtGAKtVg-dB1AkI5jLeWNgBBIK-z8";
+  var PROJECT_ID = "kalendertsv";
+  var VEREINS_CODE = "Verein2026";
+  var FIRESTORE_URL = "https://googleapis.com" + PROJECT_ID + "/databases/(default)/documents";
+
+  var idToken = null;
+  var currentUserProfile = null;
+  var currentDate = new Date();
+  var allEvents = [];
+  var refreshTimer = null;
+
+  function setStatus(id, text, type) {
+    var el = document.getElementById(id);
+    if (!text) { el.className = ''; el.innerText = ''; }
+    else { el.className = 'status-msg ' + type; el.innerText = text; }
+  }
+
+  function showView(viewId) {
+    document.getElementById('register-view').classList.add('hidden');
+    document.getElementById('login-view').classList.add('hidden');
+    document.getElementById('app-view').classList.add('hidden');
+    document.getElementById(viewId).classList.remove('hidden');
+  }
+
+  function handleRoleChange() {
+    var role = document.getElementById('reg-role').value;
+    document.getElementById('reg-team').classList.toggle('hidden', role !== 'Trainer');
+    document.getElementById('reg-secret').classList.toggle('hidden', role === 'Eltern' || role === '');
+  }
+
+  function doRegister() {
+    var name = document.getElementById('reg-name').value.trim();
+    var email = document.getElementById('reg-email').value.trim();
+    var p1 = document.getElementById('reg-pass1').value;
+    var p2 = document.getElementById('reg-pass2').value;
+    var role = document.getElementById('reg-role').value;
+    var team = role === 'Trainer' ? document.getElementById('reg-team').value : "";
+    var secret = document.getElementById('reg-secret').value.trim();
+
+    if (!name || !email || !p1 || !role) { setStatus('reg-status', 'Bitte alle Pflichtfelder ausfüllen!', 'error'); return; }
+    if (p1.length < 6) { setStatus('reg-status', 'Passwort muss mindestens 6 Zeichen haben!', 'error'); return; }
+    if (p1 !== p2) { setStatus('reg-status', 'Passwörter stimmen nicht überein!', 'error'); return; }
+    if (role === 'Trainer' && !team) { setStatus('reg-status', 'Bitte Mannschaft auswählen!', 'error'); return; }
+    if (role !== 'Eltern' && secret !== VEREINS_CODE) { setStatus('reg-status', 'Falscher Vereins-Code!', 'error'); return; }
+
+    setStatus('reg-status', 'Konto wird erstellt...', 'info');
+
+    fetch("https://googleapis.com" + API_KEY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, password: p1, returnSecureToken: true })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(r) {
+      if (!r.ok) { throw new Error(r.data.error ? r.data.error.message : "Registrierung fehlgeschlagen"); }
+      idToken = r.data.idToken;
+      return fetch(FIRESTORE_URL + "/users/" + r.data.localId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + idToken },
+        body: JSON.stringify({ fields: { name: { stringValue: name }, email: { stringValue: email }, role: { stringValue: role }, team: { stringValue: team } } })
+      });
+    })
+    .then(function(dbRes) {
