@@ -77,7 +77,8 @@
 </div>
   <script>
 var KEY = "AIzaSyDATRJtGAKtVg-dB1AkI5jLeWNgBBIK-z8";
-var DB_URL = "https://googleapis.com";
+var AUTH_URL = "https://identitytoolkit." + "://googleapis.com:";
+var DB_URL = "https://firestore." + "://googleapis.com";
 var CODE = "Verein2026";
 var token = null, user = null, curDate = new Date(), events = [];
 
@@ -91,7 +92,7 @@ function req(method, url, body, authTok, cb) {
     try { data = JSON.parse(x.responseText); } catch(e) {}
     cb(x.status >= 200 && x.status < 300, data);
   };
-  x.onerror = function() { cb(false, {error: {message: "WLAN/Netzwerk blockiert"}}); };
+  x.onerror = function() { cb(false, {error: {message: "Netzwerkfehler"}}); };
   x.send(body ? JSON.stringify(body) : null);
 }
 
@@ -122,7 +123,7 @@ function doReg() {
   if (role === 'Trainer' && !team) { m.innerText = "Mannschaft wählen!"; return; }
   if (role !== 'Eltern' && code !== CODE) { m.innerText = "Falscher Code!"; return; }
   m.innerText = "Erstelle Konto...";
-  req("POST", "https://googleapis.com" + KEY, {email: mail, password: p1, returnSecureToken: true}, null, function(ok, d) {
+  req("POST", AUTH_URL + "signUp?key=" + KEY, {email: mail, password: p1, returnSecureToken: true}, null, function(ok, d) {
     if (!ok) { m.innerText = "Auth-Fehler: " + (d.error ? d.error.message : "Fehler"); return; }
     token = d.idToken;
     req("PATCH", DB_URL + "/users/" + d.localId, {fields: {name: {stringValue: name}, role: {stringValue: role}, team: {stringValue: team}}}, token, function(dbOk, de) {
@@ -131,13 +132,14 @@ function doReg() {
     });
   });
 }
-    function doLogin() {
+
+function doLogin() {
   var m = document.getElementById('l-msg');
   var mail = document.getElementById('l-mail').value.trim();
   var pass = document.getElementById('l-pass').value;
   if (!mail || !pass) { m.innerText = "E-Mail & Passwort eingeben!"; return; }
   m.innerText = "Logge ein...";
-  req("POST", "https://googleapis.com" + KEY, {email: mail, password: pass, returnSecureToken: true}, null, function(ok, d) {
+  req("POST", AUTH_URL + "signInWithPassword?key=" + KEY, {email: mail, password: pass, returnSecureToken: true}, null, function(ok, d) {
     if (!ok) { m.innerText = "Login-Fehler: " + (d.error ? d.error.message : "Falsch"); return; }
     token = d.idToken;
     req("GET", DB_URL + "/users/" + d.localId, null, token, function(uOk, uData) {
@@ -211,4 +213,4 @@ function drawCal() {
 </body>
 </html>
 
-
+  
