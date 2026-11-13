@@ -78,8 +78,9 @@
   <script>
 var KEY = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 var P = "https:" + "//";
-var AUTH_URL = P + "identitytoolkit.g" + "://oogleapis.com:";
-var DB_URL = P + "firestore.g" + "://oogleapis.com";
+var COM = "oogleapis." + "com";
+var AUTH_URL = P + "identitytoolkit.g" + COM + "/v1/accounts:";
+var DB_URL = P + "firestore.g" + COM + "/v1/projects/kalendertsv/databases/(default)/documents";
 var CODE = "Verein2026";
 var token = null, user = null, curDate = new Date(), events = [];
 
@@ -214,4 +215,3 @@ function drawCal() {
 </body>
 </html>
 
-  
