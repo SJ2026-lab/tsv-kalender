@@ -81,98 +81,22 @@ var DB_URL = "https://googleapis.com";
 var CODE = "Verein2026";
 var token = null, user = null, curDate = new Date(), events = [];
 
-function go(id) {
-  document.getElementById('v-login').classList.add('hidden');
-  document.getElementById('v-reg').classList.add('hidden');
-  document.getElementById('v-app').classList.add('hidden');
-  document.getElementById(id).classList.remove('hidden');
-}
-
-function roleUI() {
-  var r = document.getElementById('r-role').value;
-  document.getElementById('r-team').classList.toggle('hidden', r !== 'Trainer');
-  document.getElementById('r-code').classList.toggle('hidden', r === 'Eltern' || !r);
-}
-
-function doReg() {
-  var m = document.getElementById('r-msg');
-  var name = document.getElementById('r-name').value.trim();
-  var mail = document.getElementById('r-mail').value.trim();
-  var p1 = document.getElementById('r-p1').value;
-  var p2 = document.getElementById('r-p2').value;
-  var role = document.getElementById('r-role').value;
-  var team = role === 'Trainer' ? document.getElementById('r-team').value : "";
-  var code = document.getElementById('r-code').value.trim();
-
-  if (!name || !mail || !p1 || !role) { m.innerText = "Bitte alle Felder ausfüllen!"; return; }
-  if (p1 !== p2) { m.innerText = "Passwörter stimmen nicht überein!"; return; }
-  if (role === 'Trainer' && !team) { m.innerText = "Bitte Mannschaft wählen!"; return; }
-  if (role !== 'Eltern' && code !== CODE) { m.innerText = "Falscher Code (Verein2026)!"; return; }
-
-  m.innerText = "Erstelle Konto...";
-  fetch("https://googleapis.com" + KEY, {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({email: mail, password: p1, returnSecureToken: true})
-  })
-  .then(function(res) { return res.json().then(function(d) { return {ok: res.ok, data: d}; }); })
-  .then(function(r) {
-    if (!r.ok) { throw new Error(r.data.error ? r.data.error.message : "Auth-Fehler"); }
-    token = r.data.idToken;
-    return fetch(DB_URL + "/users/" + r.data.localId, {
-      method: "PATCH", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + token},
-      body: JSON.stringify({fields: {name: {stringValue: name}, role: {stringValue: role}, team: {stringValue: team}}})
-    });
-  })
-  .then(function(dbRes) {
-    if (!dbRes.ok) { return dbRes.json().then(function(de) { throw new Error("DB-Fehler: " + de.error.message); }); }
-    m.innerText = ""; user = {name: name, role: role, team: team}; startApp();
-  })
-  .catch(function(err) { m.innerText = "Fehler: " + err.message; });
-}
-
-function doLogin() {
-  var m = document.getElementById('l-msg');
-  var mail = document.getElementById('l-mail').value.trim();
-  var pass = document.getElementById('l-pass').value;
-  if (!mail || !pass) { m.innerText = "E-Mail & Passwort eingeben!"; return; }
-  m.innerText = "Logge ein...";
-  fetch("https://googleapis.com" + KEY, {
-    method: "POST", headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({email: mail, password: pass, returnSecureToken: true})
-  })
-  .then(function(res) { return res.json().then(function(d) { return {ok: res.ok, data: d}; }); })
-  .then(function(r) {
-    if (!r.ok) { throw new Error(r.data.error ? r.data.error.message : "Login-Fehler"); }
-    token = r.data.idToken;
-    return fetch(DB_URL + "/users/" + r.data.localId, { headers: {"Authorization": "Bearer " + token} });
-  })
-  .then(function(uRes) { return uRes.json(); })
-  .then(function(uData) {
-    if (!uData.fields) { throw new Error("Kein Profil gefunden!"); }
-    m.innerText = ""; user = { name: uData.fields.name.stringValue, role: uData.fields.role.stringValue, team: uData.fields.team ? uData.fields.team.stringValue : "" }; startApp();
-  })
-  .catch(function(err) { m.innerText = "Fehler: " + err.message; });
-}
-
-function doLogout() { token = null; user = null; go('v-login'); }
-
-function startApp() {
-  go('v-app');
-  document.getElementById('u-info').innerText = user.name + " (" + user.role + (user.team ? " - " + user.team : "") + ")";
-  var ed = document.getElementById('ed-box');
-  if (user.role === 'Eltern') { ed.classList.add('hidden'); }
-  else {
-    ed.classList.remove('hidden');
-    if (user.role === 'Trainer') document.getElementById('e-team').innerHTML = '<option value="'+user.team+'">'+user.team+'</option>';
+function req(method, url, body, authTok, cb) {
+  var x = new XMLHttpRequest();
+  x.open(method, url, true);
+  x.setRequestHeader("Content-Type", "application/json");
+  if (authTok) x.setRequestHeader("Authorization", "Bearer " + authTok);
+  x.onload = function() {
+    var data = {};
+    try { data = JSON.parse(x.responseText); } catch(e) {}
+    cb(x.status >= 200 && x.status '+user.team+'</option>';
   }
   loadEv();
 }
 
 function loadEv() {
   if (!token) return;
-  fetch(DB_URL + "/events", { headers: {"Authorization": "Bearer " + token} })
-  .then(function(res) { return res.json(); })
-  .then(function(d) {
+  req("GET", DB_URL + "/events", null, token, function(ok, d) {
     events = (d.documents || []).map(function(doc) {
       return { id: doc.name.split('/').pop(), date: doc.fields.date.stringValue, title: doc.fields.title.stringValue, team: doc.fields.team.stringValue };
     });
@@ -185,15 +109,14 @@ function addEv() {
   var title = document.getElementById('e-title').value.trim();
   var team = user.role === 'Trainer' ? user.team : document.getElementById('e-team').value;
   if (!date || !title) { alert("Datum und Titel eingeben!"); return; }
-  fetch(DB_URL + "/events", {
-    method: "POST", headers: {"Content-Type": "application/json", "Authorization": "Bearer " + token},
-    body: JSON.stringify({fields: {date: {stringValue: date}, title: {stringValue: title}, team: {stringValue: team}}})
-  }).then(function() { document.getElementById('e-title').value = ""; loadEv(); });
+  req("POST", DB_URL + "/events", {fields: {date: {stringValue: date}, title: {stringValue: title}, team: {stringValue: team}}}, token, function() {
+    document.getElementById('e-title').value = ""; loadEv();
+  });
 }
 
 function delEv(id) {
   if (!confirm("Löschen?")) return;
-  fetch(DB_URL + "/events/" + id, { method: "DELETE", headers: {"Authorization": "Bearer " + token} }).then(loadEv);
+  req("DELETE", DB_URL + "/events/" + id, null, token, function() { loadEv(); });
 }
 
 function stepMonth(s) { curDate.setMonth(curDate.getMonth() + s); drawCal(); }
@@ -220,4 +143,3 @@ function drawCal() {
 </script>
 </body>
 </html>
-
