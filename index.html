@@ -14,7 +14,6 @@
   button:active { opacity: 0.8; }
   .hidden { display: none !important; }
 
-  /* Apple Top Header */
   .ios-top { padding: 14px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
   .m-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; }
   .m-year { color: #ff3b30; font-weight: 600; }
@@ -22,17 +21,14 @@
   .icon-btn { width: 34px; height: 34px; border-radius: 50%; background: #f2f2f7; color: #ff3b30; padding: 0; margin: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
   .txt-btn { width: auto; height: 32px; padding: 0 10px; border-radius: 16px; background: #f2f2f7; color: #1c1c1e; font-size: 0.8rem; margin: 0; }
 
-  /* iOS Segmented Control (Monat / Woche) */
   .seg-wrap { padding: 4px 16px 8px; }
   .seg-bar { display: flex; background: #e5e5ea; border-radius: 9px; padding: 2px; }
   .seg-btn { flex: 1; height: 28px; margin: 0; background: transparent; color: #000; font-size: 0.82rem; font-weight: 600; border-radius: 7px; }
   .seg-btn.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-  /* Zwei kompakte Filter-Dropdown-Buttons */
   .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 10px; border-bottom: 1px solid #e5e5ea; }
   .filter-sel { height: 34px; margin: 0; padding: 0 10px; font-size: 0.82rem; font-weight: 600; border-radius: 8px; background: #f2f2f7; border: none; color: #1c1c1e; }
 
-  /* Monatsraster */
   .cal-wrap { padding: 6px 10px 10px; border-bottom: 1px solid #e5e5ea; }
   .wk-row, .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
   .wk-row div { font-size: 0.7rem; font-weight: 600; color: #8e8e93; padding-bottom: 6px; text-transform: uppercase; }
@@ -45,7 +41,6 @@
   .dots { display: flex; gap: 3px; height: 5px; margin-top: 1px; }
   .dot { width: 5px; height: 5px; border-radius: 50%; }
 
-  /* Tages-Agenda & Wochen-Agenda */
   .agenda { flex: 1; padding: 14px 16px 80px; background: #f2f2f7; }
   .ag-head { font-size: 0.85rem; font-weight: 700; color: #6e6e73; margin: 12px 0 6px; text-transform: uppercase; }
   .ag-head:first-child { margin-top: 0; }
@@ -58,7 +53,6 @@
   .act-btn { width: 30px; height: 30px; border-radius: 8px; background: #f2f2f7; color: #1c1c1e; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; }
   .act-del { color: #ff3b30; background: #fff0f0; }
 
-  /* Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
   .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; max-height: 85vh; overflow-y: auto; }
   .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f2f2f7; padding-bottom: 10px; }
@@ -67,7 +61,6 @@
 </head>
 <body>
 <div class="app">
-  <!-- HEADER -->
   <div class="ios-top">
     <div class="m-title"><span id="m-name">Monat</span> <span class="m-year" id="m-year">2026</span></div>
     <div class="top-actions">
@@ -78,7 +71,6 @@
     </div>
   </div>
 
-  <!-- MONATS- / WOCHEN-UMSCHALTER -->
   <div class="seg-wrap">
     <div class="seg-bar">
       <button type="button" id="seg-month" class="seg-btn active" onclick="setView('month')">Monat</button>
@@ -86,22 +78,18 @@
     </div>
   </div>
 
-  <!-- ZWEI KOMPAKTE AUSWAHL-BUTTONS (FILTER) -->
   <div class="filter-grid">
     <select id="sel-filter-team" class="filter-sel" onchange="drawCal()"></select>
     <select id="sel-filter-lbl" class="filter-sel" onchange="drawCal()"></select>
   </div>
 
-  <!-- MONATSRASTER (In Wochenansicht ausgeblendet) -->
   <div id="month-grid-box" class="cal-wrap">
     <div class="wk-row"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div>
     <div class="days-grid" id="days-grid"></div>
   </div>
 
-  <!-- AGENDA (Zeigt entweder gewählten Tag oder komplette Woche) -->
   <div class="agenda" id="agenda-box"></div>
 
-  <!-- MODAL: TERMIN ANLEGEN / EDITIEREN -->
   <div id="ev-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('ev-modal')">
     <div class="modal">
       <div class="modal-top">
@@ -118,7 +106,6 @@
     </div>
   </div>
 
-  <!-- MODAL: MANNSCHAFTEN & LABELS HINZUFÜGEN -->
   <div id="mng-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('mng-modal')">
     <div class="modal">
       <div class="modal-top">
@@ -143,6 +130,7 @@
     </div>
   </div>
 </div>
+
 <script>
 var todayObj = new Date();
 var todayStr = fmtDate(todayObj);
@@ -166,6 +154,13 @@ function fmtDate(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
 }
 
+function parseDateStr(ds) {
+  var y = parseInt(ds.slice(0, 4), 10);
+  var m = parseInt(ds.slice(5, 7), 10);
+  var d = parseInt(ds.slice(8, 10), 10);
+  return new Date(y, m - 1, d);
+}
+
 function saveData() {
   localStorage.setItem('tsv_teams', JSON.stringify(teams));
   localStorage.setItem('tsv_labels', JSON.stringify(labels));
@@ -173,55 +168,15 @@ function saveData() {
 }
 
 function getLblColor(lblName) {
+  var found = labels.find(function(l) { return l.name === lblName; });
+  return found ? found.color : "#8e8e93";
+}
+
+function rebuildDropdowns() {
+  var fTeam = document.getElementById('sel-filter-team');
+  var oldT = fTeam.value || "ALL";
 
 <script>
-var todayObj = new Date();
-var todayStr = todayObj.getFullYear() + "-" + String(todayObj.getMonth()+1).padStart(2,'0') + "-" + String(todayObj.getDate()).padStart(2,'0');
-var curDate = new Date();
-var selectedDate = todayStr;
-var filterTeam = "ALL";
-var filterLbl = "ALL";
-
-var events = JSON.parse(localStorage.getItem('tsv_demo_events')) || [
-  { id: "1", date: todayStr, time: "17:00", title: "Mannschaftstraining", label: "Training", team: "U11" },
-  { id: "2", date: todayStr, time: "18:30", title: "Punktspiel Heim", label: "Spiel", team: "U13" }
-];
-
-function saveToLocal() {
-  localStorage.setItem('tsv_demo_events', JSON.stringify(events));
-}
-
-function setTeamFilter(t, btn) {
-  filterTeam = t;
-  document.querySelectorAll('.chip-team').forEach(function(c) { c.classList.remove('active'); });
-  btn.classList.add('active');
-  drawCal();
-}
-
-function setLblFilter(l, btn) {
-  filterLbl = l;
-  document.querySelectorAll('.chip-lbl').forEach(function(c) { c.classList.remove('active'); });
-  btn.classList.add('active');
-  drawCal();
-}
-
-function openEvModal(evId) {
-  if (evId) {
-    var ev = events.find(function(x) { return x.id === evId; });
-    document.getElementById('ev-modal-title').innerText = "Termin bearbeiten";
-    document.getElementById('edit-ev-id').value = ev.id;
-    document.getElementById('e-date').value = ev.date;
-    document.getElementById('e-time').value = ev.time || "17:00";
-    document.getElementById('e-title').value = ev.title;
-    document.getElementById('e-label').value = ev.label;
-    document.getElementById('e-team').value = ev.team;
-  } else {
-    document.getElementById('ev-modal-title').innerText = "Neuer Termin";
-    document.getElementById('edit-ev-id').value = "";
-    document.getElementById('e-date').value = selectedDate;
-
-  
-  <script>
 var KEY = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 var P = "https:" + "//";
 var COM = "oogleapis." + "com";
