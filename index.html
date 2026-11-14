@@ -18,7 +18,6 @@
   .hidden { display: none !important; }
   .msg { font-size: 0.9rem; font-weight: 600; margin: 8px 0; color: #ff3b30; }
 
-  /* Apple Top Header */
   .ios-top { padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: center; }
   .m-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; }
   .m-year { color: #ff3b30; font-weight: 600; }
@@ -28,17 +27,14 @@
   .sub-bar { padding: 0 16px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #8e8e93; }
   .warn-banner { background: #fff3cd; color: #856404; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; text-align: center; border-bottom: 1px solid #ffeeba; }
 
-  /* Monat / Woche Umschalter */
   .seg-wrap { padding: 4px 16px 8px; }
   .seg-bar { display: flex; background: #e5e5ea; border-radius: 9px; padding: 2px; }
   .seg-btn { flex: 1; height: 28px; margin: 0; background: transparent; color: #000; font-size: 0.82rem; font-weight: 600; border-radius: 7px; }
   .seg-btn.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
-  /* Filter Buttons */
   .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 10px; border-bottom: 1px solid #e5e5ea; }
   .filter-sel { height: 34px; margin: 0; padding: 0 10px; font-size: 0.82rem; font-weight: 600; border-radius: 8px; background: #f2f2f7; border: none; color: #1c1c1e; }
 
-  /* Monatsraster */
   .cal-wrap { padding: 6px 10px 10px; border-bottom: 1px solid #e5e5ea; }
   .wk-row, .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
   .wk-row div { font-size: 0.7rem; font-weight: 600; color: #8e8e93; padding-bottom: 6px; text-transform: uppercase; }
@@ -51,7 +47,6 @@
   .dots { display: flex; gap: 3px; height: 5px; margin-top: 1px; }
   .dot { width: 5px; height: 5px; border-radius: 50%; }
 
-  /* Agenda */
   .agenda { flex: 1; padding: 14px 16px 80px; background: #f2f2f7; }
   .ag-head { font-size: 0.85rem; font-weight: 700; color: #6e6e73; margin: 12px 0 6px; text-transform: uppercase; }
   .ag-head:first-child { margin-top: 0; }
@@ -64,7 +59,6 @@
   .act-btn { width: 30px; height: 30px; border-radius: 8px; background: #f2f2f7; color: #1c1c1e; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; }
   .act-del { color: #ff3b30; background: #fff0f0; }
 
-  /* Bottom Sheet Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
   .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; max-height: 85vh; overflow-y: auto; }
   .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f2f2f7; padding-bottom: 10px; }
@@ -74,7 +68,6 @@
 </head>
 <body>
 <div class="box">
-  <!-- 1. LOGIN -->
   <div id="v-login" class="auth">
     <h2>TSV Kalender-Login</h2>
     <input type="email" id="l-mail" placeholder="E-Mail-Adresse">
@@ -84,7 +77,6 @@
     <button type="button" class="btn-sub" onclick="go('v-reg')">Noch kein Konto? Jetzt registrieren</button>
   </div>
 
-  <!-- 2. REGISTRIERUNG -->
   <div id="v-reg" class="auth hidden">
     <h2>TSV Registrierung</h2>
     <input type="text" id="r-name" placeholder="Vor- und Nachname">
@@ -104,12 +96,11 @@
     <button type="button" class="btn-sub" onclick="go('v-login')">Zurück zum Login</button>
   </div>
 
-  <!-- 3. HAUPT-APP (APPLE KALENDER) -->
   <div id="v-app" class="hidden" style="display:flex; flex-direction:column; flex:1;">
     <div id="pending-banner" class="warn-banner hidden">Wartet auf Mannschafts-Freigabe durch Jugendleiter</div>
     
     <div class="ios-top">
-      <div class="m-title"><span id="m-name">Monat</span> <span class="m-year" id="m-year">2026</span></div>
+      <div class="m-title"><span id="m-name">November</span> <span class="m-year" id="m-year">2026</span></div>
       <div class="top-actions">
         <button type="button" id="btn-admin" class="admin-btn hidden" onclick="openAdmin()">Admin</button>
         <button type="button" class="icon-btn" onclick="stepPeriod(-1)">&#8249;</button>
@@ -143,7 +134,6 @@
     <div class="agenda" id="agenda-box"></div>
   </div>
 
-  <!-- MODAL: TERMIN ANLEGEN / EDITIEREN -->
   <div id="ev-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('ev-modal')">
     <div class="modal">
       <div class="modal-top">
@@ -153,6 +143,13 @@
       <input type="hidden" id="edit-ev-id">
       <input type="date" id="e-date">
       <input type="time" id="e-time" value="17:00">
+      <input type="text" id="e-title" placeholder="Titel (z.B. Heimspiel gegen ...)">
+      <select id="e-label"></select>
+      <select id="e-team"></select>
+      <button type="button" onclick="saveEv()">Speichern</button>
+    </div>
+  </div>
+
 
 <script>
 var KEY = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
