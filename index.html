@@ -148,8 +148,7 @@
       <select id="e-team"></select>
       <button type="button" onclick="saveEv()">Speichern</button>
     </div>
-  </div>
-<script>
+   <script>
 var KEY = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 var P = "https:" + "//";
 var COM = "oogleapis." + "com";
@@ -171,11 +170,9 @@ var labels = [
 function fmtDate(d) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
 }
-
 function parseDateStr(ds) {
   return new Date(parseInt(ds.slice(0, 4), 10), parseInt(ds.slice(5, 7), 10) - 1, parseInt(ds.slice(8, 10), 10));
 }
-
 function req(method, url, body, authTok, cb) {
   var x = new XMLHttpRequest();
   x.open(method, url, true);
@@ -189,19 +186,16 @@ function req(method, url, body, authTok, cb) {
   x.onerror = function() { cb(false, {error: {message: "Netzwerkfehler"}}); };
   x.send(body ? JSON.stringify(body) : null);
 }
-
 function go(id) {
   document.getElementById('v-login').classList.add('hidden');
   document.getElementById('v-reg').classList.add('hidden');
   document.getElementById('v-app').classList.add('hidden');
   document.getElementById(id).classList.remove('hidden');
 }
-
 function roleUI() {
   var r = document.getElementById('r-role').value;
   document.getElementById('r-code').classList.toggle('hidden', r !== 'Jugendleiter' && r !== 'Vorstand');
 }
-
 function doReg() {
   var m = document.getElementById('r-msg');
   var name = document.getElementById('r-name').value.trim();
@@ -210,11 +204,9 @@ function doReg() {
   var p2 = document.getElementById('r-p2').value;
   var role = document.getElementById('r-role').value;
   var code = document.getElementById('r-code').value.trim();
-
   if (!name || !mail || !p1 || !role) { m.innerText = "Alle Felder ausfüllen!"; return; }
   if (p1 !== p2) { m.innerText = "Passwörter ungleich!"; return; }
   if ((role === 'Jugendleiter' || role === 'Vorstand') && code !== CODE) { m.innerText = "Falscher Code (Verein2026)!"; return; }
-
   m.innerText = "Erstelle Konto...";
   req("POST", AUTH_URL + "signUp?key=" + KEY, {email: mail, password: p1, returnSecureToken: true}, null, function(ok, d) {
     if (!ok) { m.innerText = "Auth-Fehler: " + (d.error ? d.error.message : "Fehler"); return; }
@@ -226,7 +218,6 @@ function doReg() {
     });
   });
 }
-
 function doLogin() {
   var m = document.getElementById('l-msg');
   var mail = document.getElementById('l-mail').value.trim();
@@ -244,73 +235,50 @@ function doLogin() {
     });
   });
 }
-
 function doLogout() { token = null; user = null; go('v-login'); }
-
 function startApp() {
   go('v-app');
   var isAdmin = (user.role === 'Vorstand' || user.role === 'Jugendleiter');
   var isApprovedTrainer = (user.role === 'Trainer' && user.team !== "");
   var isPendingTrainer = (user.role === 'Trainer' && user.team === "");
-
   document.getElementById('pending-banner').classList.toggle('hidden', !isPendingTrainer);
   document.getElementById('btn-add-ev').classList.toggle('hidden', !(isAdmin || isApprovedTrainer));
   document.getElementById('btn-admin').classList.toggle('hidden', !isAdmin);
-
   var roleDisp = user.role;
   if (user.role === 'Trainer') roleDisp += user.team ? " · " + user.team : " (Nicht freigegeben)";
   document.getElementById('u-info').innerText = user.name + " (" + roleDisp + ")";
-
   rebuildDropdowns();
   drawCal();
   loadSettingsAndEvents();
 }
-
-function loadSettingsAndEvents() {
+    function loadSettingsAndEvents() {
   req("GET", DB_URL + "/settings/config", null, token, function(ok, d) {
     if (ok && d.fields) {
-      if (d.fields.teams && d.fields.teams.stringValue) {
-        try { teams = JSON.parse(d.fields.teams.stringValue); } catch(e) {}
-      }
-      if (d.fields.labels && d.fields.labels.stringValue) {
-        try { labels = JSON.parse(d.fields.labels.stringValue); } catch(e) {}
-      }
+      if (d.fields.teams && d.fields.teams.stringValue) { try { teams = JSON.parse(d.fields.teams.stringValue); } catch(e) {} }
+      if (d.fields.labels && d.fields.labels.stringValue) { try { labels = JSON.parse(d.fields.labels.stringValue); } catch(e) {} }
     }
-    rebuildDropdowns();
-    loadEv();
+    rebuildDropdowns(); loadEv();
   });
 }
-
 function saveConfigToDB() {
-  req("PATCH", DB_URL + "/settings/config", {
-    fields: {
-      teams: { stringValue: JSON.stringify(teams) },
-      labels: { stringValue: JSON.stringify(labels) }
-    }
-  }, token, function() {
-    rebuildDropdowns();
-    renderMngLists();
-    drawCal();
+  req("PATCH", DB_URL + "/settings/config", { fields: { teams: { stringValue: JSON.stringify(teams) }, labels: { stringValue: JSON.stringify(labels) } } }, token, function() {
+    rebuildDropdowns(); renderMngLists(); drawCal();
   });
 }
-
 function getLblColor(lblName) {
   var found = labels.find(function(l) { return l.name === lblName; });
   return found ? found.color : "#8e8e93";
 }
-
 function rebuildDropdowns() {
   var fTeam = document.getElementById('sel-filter-team');
   var oldT = fTeam.value || "ALL";
   fTeam.innerHTML = '<option value="ALL">Mannschaft: Alle</option>' + teams.map(function(t) { return '<option value="' + t + '">Team: ' + t + '</option>'; }).join('');
   fTeam.value = teams.indexOf(oldT) !== -1 ? oldT : "ALL";
-
   var fLbl = document.getElementById('sel-filter-lbl');
   var oldL = fLbl.value || "ALL";
   fLbl.innerHTML = '<option value="ALL">Label: Alle</option>' + labels.map(function(l) { return '<option value="' + l.name + '">Label: ' + l.name + '</option>'; }).join('');
   fLbl.value = labels.some(function(l) { return l.name === oldL; }) ? oldL : "ALL";
 }
-
 function setView(mode) {
   viewMode = mode;
   document.getElementById('seg-month').classList.toggle('active', mode === 'month');
@@ -318,48 +286,26 @@ function setView(mode) {
   document.getElementById('month-grid-box').classList.toggle('hidden', mode === 'week');
   drawCal();
 }
-
 function stepPeriod(step) {
-  if (viewMode === 'month') {
-    curDate.setMonth(curDate.getMonth() + step);
-  } else {
-    var d = parseDateStr(selectedDate);
-    d.setDate(d.getDate() + (step * 7));
-    selectedDate = fmtDate(d);
-    curDate = new Date(d);
-  }
+  if (viewMode === 'month') { curDate.setMonth(curDate.getMonth() + step); }
+  else { var d = parseDateStr(selectedDate); d.setDate(d.getDate() + (step * 7)); selectedDate = fmtDate(d); curDate = new Date(d); }
   drawCal();
 }
-
 function selectDay(ds) { selectedDate = ds; drawCal(); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
 function loadEv() {
   if (!token) return;
   req("GET", DB_URL + "/events", null, token, function(ok, d) {
     events = (d.documents || []).map(function(doc) {
-      return {
-        id: doc.name.split('/').pop(),
-        date: doc.fields.date.stringValue,
-        time: doc.fields.time ? doc.fields.time.stringValue : "",
-        title: doc.fields.title.stringValue,
-        label: doc.fields.label ? doc.fields.label.stringValue : "Training",
-        team: doc.fields.team.stringValue
-      };
+      return { id: doc.name.split('/').pop(), date: doc.fields.date.stringValue, time: doc.fields.time ? doc.fields.time.stringValue : "", title: doc.fields.title.stringValue, label: doc.fields.label ? doc.fields.label.stringValue : "Training", team: doc.fields.team.stringValue };
     });
     drawCal();
   });
 }
-
 function openEvModal(evId) {
   var selT = document.getElementById('e-team');
-  if (user.role === 'Trainer') {
-    selT.innerHTML = '<option value="' + user.team + '">' + user.team + '</option>';
-  } else {
-    selT.innerHTML = teams.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
-  }
+  selT.innerHTML = user.role === 'Trainer' ? '<option value="' + user.team + '">' + user.team + '</option>' : teams.map(function(t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
   document.getElementById('e-label').innerHTML = labels.map(function(l) { return '<option value="' + l.name + '">' + l.name + '</option>'; }).join('');
-
   if (evId) {
     var ev = events.find(function(x) { return x.id === evId; });
     document.getElementById('ev-modal-title').innerText = "Termin bearbeiten";
@@ -378,7 +324,6 @@ function openEvModal(evId) {
   }
   document.getElementById('ev-modal').classList.remove('hidden');
 }
-
 function saveEv() {
   var editId = document.getElementById('edit-ev-id').value;
   var date = document.getElementById('e-date').value;
@@ -386,7 +331,72 @@ function saveEv() {
   var title = document.getElementById('e-title').value.trim();
   var label = document.getElementById('e-label').value;
   var team = user.role === 'Trainer' ? user.team : document.getElementById('e-team').value;
-
   if (!date || !title) { alert("Bitte Datum und Titel eingeben!"); return; }
+  var payload = { fields: { date: {stringValue: date}, time: {stringValue: time}, title: {stringValue: title}, label: {stringValue: label}, team: {stringValue: team} } };
+  req(editId ? "PATCH" : "POST", DB_URL + "/events" + (editId ? "/" + editId : ""), payload, token, function() {
+    selectedDate = date; curDate = parseDateStr(date); closeModal('ev-modal'); loadEv();
+  });
+}
+function delEv(id) {
+  if (!confirm("Termin wirklich löschen?")) return;
+  req("DELETE", DB_URL + "/events/" + id, null, token, function() { loadEv(); });
+}
+function openAdmin() {
+  renderMngLists();
+  document.getElementById('admin-modal').classList.remove('hidden');
+  req("GET", DB_URL + "/users", null, token, function(ok, d) {
+    var list = document.getElementById('admin-trainers-list');
+    list.innerHTML = "";
+    var trainers = (d.documents || []).map(function(doc) {
+      return { uid: doc.name.split('/').pop(), name: doc.fields.name.stringValue, role: doc.fields.role.stringValue, team: doc.fields.team ? doc.fields.team.stringValue : "" };
+    }).filter(function(u) { return u.role === 'Trainer'; });
+    if (trainers.length === 0) { list.innerHTML = '<div style="color:#8e8e93; font-size:0.85rem;">Noch keine Trainer registriert.</div>'; return; }
+    trainers.forEach(function(tr) {
+      var opts = '<option value="">-- Nicht freigegeben --</option>' + teams.map(function(t) { return '<option value="' + t + '" ' + (tr.team === t ? 'selected' : '') + '>' + t + '</option>'; }).join('');
+      list.innerHTML += '<div class="mng-row"><div><strong>' + tr.name + '</strong><div style="font-size:0.75rem; color:' + (tr.team ? '#34c759' : '#ff3b30') + ';">' + (tr.team ? 'Aktiv: ' + tr.team : 'Wartet auf Freigabe') + '</div></div><select onchange="assignTrainer(\'' + tr.uid + '\', \'' + tr.name + '\', this.value)">' + opts + '</select></div>';
+    });
+  });
+}
+function renderMngLists() {
+  document.getElementById('mng-teams-list').innerHTML = teams.map(function(t, i) {
+    return '<div class="mng-row"><span>' + t + '</span><span style="color:#ff3b30; font-weight:bold; cursor:pointer;" onclick="delTeam(' + i + ')">Löschen</span></div>';
+  }).join('');
+  document.getElementById('mng-lbls-list').innerHTML = labels.map(function(l, i) {
+    return '<div class="mng-row"><span><b style="color:' + l.color + ';">●</b> ' + l.name + '</span><span style="color:#ff3b30; font-weight:bold; cursor:pointer;" onclick="delLabel(' + i + ')">Löschen</span></div>';
+  }).join('');
+}
+function addTeam() { var inp = document.getElementById('new-team'), v = inp.value.trim(); if (!v || teams.indexOf(v) !== -1) return; teams.push(v); inp.value = ""; saveConfigToDB(); }
+function delTeam(i) { if (teams.length > 1) { teams.splice(i, 1); saveConfigToDB(); } }
+function addLabel() { var inp = document.getElementById('new-lbl'), c = document.getElementById('new-lbl-color').value, v = inp.value.trim(); if (!v || labels.some(function(l) { return l.name === v; })) return; labels.push({ name: v, color: c }); inp.value = ""; saveConfigToDB(); }
+function delLabel(i) { if (labels.length > 1) { labels.splice(i, 1); saveConfigToDB(); } }
+function assignTrainer(uid, name, newTeam) { req("PATCH", DB_URL + "/users/" + uid, { fields: { name: {stringValue: name}, role: {stringValue: "Trainer"}, team: {stringValue: newTeam} } }, token, openAdmin); }
+function drawCal() {
+  var y = curDate.getFullYear(), m = curDate.getMonth();
+  var names = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  var wNames = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  document.getElementById('m-name').innerText = names[m];
+  document.getElementById('m-year').innerText = y;
+  var fTeam = document.getElementById('sel-filter-team').value || "ALL";
+  var fLbl = document.getElementById('sel-filter-lbl').value || "ALL";
+  if (viewMode === 'month') {
+    var grid = document.getElementById('days-grid'); grid.innerHTML = "";
+    var first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+    for (var i = 0; i < first; i++) grid.innerHTML += '<div></div>';
+    for (var d = 1; d <= days; d++) {
+      var ds = y + "-" + String(m + 1).padStart(2, '0') + "-" + String(d).padStart(2, '0');
+      var wd = (first + d - 1) % 7;
+      var dayEvs = events.filter(function(e) { return e.date === ds && (fTeam === "ALL" || e.team === fTeam) && (fLbl === "ALL" || e.label === fLbl); });
+      var dotsHtml = '<div class="dots">' + dayEvs.slice(0, 4).map(function(e) { return '<span class="dot" style="background:' + getLblColor(e.label) + ';"></span>'; }).join('') + '</div>';
+      var cls = "d-cell" + (wd >= 5 ? " wknd" : "") + (ds === todayStr ? " today" : "") + (ds === selectedDate ? " selected" : "");
+      grid.innerHTML += '<div class="' + cls + '" onclick="selectDay(\'' + ds + '\')"><div class="d-num">' + d + '</div>' + dotsHtml + '</div>';
+    }
+    var selObj = parseDateStr(selectedDate);
+    document.getElementById('agenda-box').innerHTML = '<div class="ag-head">' + selObj.getDate() + '. ' + names[selObj.getMonth()] + ' ' + selObj.getFullYear() + '</div>' + renderDayEvents(selectedDate, fTeam, fLbl, true);
+  } else {
+    var base = parseDateStr(selectedDate), monday = new Date(base); monday.setDate(base.getDate() - ((base.getDay() + 6) % 7));
+    var html = "";
+    for (var i = 0; i < 7; i++) {
 
 
+   
+  
