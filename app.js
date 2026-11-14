@@ -252,7 +252,8 @@ if (savedUser) {
   } catch (e) {
     updateUI(null);
   }
-} else {
+}     if (typeof ladeTermine === "function") ladeTermine();
+else {
   updateUI(null);
 }
 
