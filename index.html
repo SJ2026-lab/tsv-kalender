@@ -2,29 +2,79 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>TSV Vereinskalender</title>
 <style>
-  body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; padding: 15px; display: flex; justify-content: center; }
-  .box { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
-  .auth { max-width: 350px; margin: 15px auto; text-align: center; }
-  input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
-  button { background: #007bff; color: #fff; border: none; font-weight: bold; cursor: pointer; }
-  .btn-sub { background: #fff; color: #007bff; border: 2px solid #007bff; }
-  .btn-gray { background: #6c757d; width: auto; padding: 8px 14px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; background: #f2f2f7; margin: 0; padding: 0; color: #000; }
+  .box { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+  .auth { padding: 30px 20px; margin: auto 0; text-align: center; }
+  h2 { margin: 0 0 20px; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; color: #111; }
+  input, select, button { width: 100%; height: 46px; padding: 0 14px; margin: 6px 0; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; background: #f9f9fb; font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: #ff3b30; background: #fff; }
+  button { background: #ff3b30; color: #fff; border: none; font-weight: 600; cursor: pointer; }
+  button:active { opacity: 0.8; }
+  .btn-sub { background: transparent; color: #ff3b30; border: 1.5px solid #ff3b30; margin-top: 8px; }
   .hidden { display: none !important; }
-  .msg { font-size: 0.9rem; font-weight: bold; margin: 8px 0; color: #d93025; }
-  .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-  .day { min-height: 80px; border: 1px solid #ddd; border-radius: 4px; padding: 4px; background: #fafafa; font-size: 0.8rem; }
-  .ev { background: #007bff; color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 0.75rem; margin-top: 2px; display: flex; justify-content: space-between; }
-  .ev-U11 { background: #28a745; } .ev-U13 { background: #fd7e14; } .ev-U15 { background: #6f42c1; } .ev-Alle { background: #17a2b8; }
-  .ed { background: #f8f9fa; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; }
-  @media (max-width: 600px) { .ed { grid-template-columns: 1fr; } }
+  .msg { font-size: 0.9rem; font-weight: 600; margin: 8px 0; color: #ff3b30; }
+
+  /* Apple Top Header */
+  .ios-top { padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: center; }
+  .m-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; }
+  .m-year { color: #ff3b30; font-weight: 600; }
+  .top-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn { width: 34px; height: 34px; border-radius: 50%; background: #f2f2f7; color: #ff3b30; padding: 0; margin: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+  .admin-btn { width: auto; height: 32px; padding: 0 11px; border-radius: 16px; background: #1c1c1e; color: #fff; font-size: 0.78rem; margin: 0; }
+  .sub-bar { padding: 0 16px 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #8e8e93; }
+  .warn-banner { background: #fff3cd; color: #856404; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; text-align: center; border-bottom: 1px solid #ffeeba; }
+
+  /* Monat / Woche Umschalter */
+  .seg-wrap { padding: 4px 16px 8px; }
+  .seg-bar { display: flex; background: #e5e5ea; border-radius: 9px; padding: 2px; }
+  .seg-btn { flex: 1; height: 28px; margin: 0; background: transparent; color: #000; font-size: 0.82rem; font-weight: 600; border-radius: 7px; }
+  .seg-btn.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+  /* Filter Buttons */
+  .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 10px; border-bottom: 1px solid #e5e5ea; }
+  .filter-sel { height: 34px; margin: 0; padding: 0 10px; font-size: 0.82rem; font-weight: 600; border-radius: 8px; background: #f2f2f7; border: none; color: #1c1c1e; }
+
+  /* Monatsraster */
+  .cal-wrap { padding: 6px 10px 10px; border-bottom: 1px solid #e5e5ea; }
+  .wk-row, .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+  .wk-row div { font-size: 0.7rem; font-weight: 600; color: #8e8e93; padding-bottom: 6px; text-transform: uppercase; }
+  .d-cell { height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-top: 0.5px solid #f2f2f7; }
+  .d-num { font-size: 1.05rem; width: 32px; height: 32px; line-height: 32px; border-radius: 50%; }
+  .d-cell.wknd .d-num { color: #8e8e93; }
+  .d-cell.today .d-num { color: #ff3b30; font-weight: 700; }
+  .d-cell.selected .d-num { background: #1c1c1e; color: #fff; font-weight: 600; }
+  .d-cell.today.selected .d-num { background: #ff3b30; color: #fff; }
+  .dots { display: flex; gap: 3px; height: 5px; margin-top: 1px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* Agenda */
+  .agenda { flex: 1; padding: 14px 16px 80px; background: #f2f2f7; }
+  .ag-head { font-size: 0.85rem; font-weight: 700; color: #6e6e73; margin: 12px 0 6px; text-transform: uppercase; }
+  .ag-head:first-child { margin-top: 0; }
+  .ev-card { background: #fff; border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-left: 4px solid #8e8e93; }
+  .ev-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
+  .lbl-tag { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: #fff; text-transform: uppercase; }
+  .team-txt { font-size: 0.78rem; font-weight: 700; color: #6e6e73; }
+  .ev-title { font-size: 0.98rem; font-weight: 600; color: #000; }
+  .ev-actions { display: flex; gap: 6px; }
+  .act-btn { width: 30px; height: 30px; border-radius: 8px; background: #f2f2f7; color: #1c1c1e; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; }
+  .act-del { color: #ff3b30; background: #fff0f0; }
+
+  /* Bottom Sheet Modals */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
+  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; max-height: 85vh; overflow-y: auto; }
+  .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f2f2f7; padding-bottom: 10px; }
+  .mng-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #f2f2f7; font-size: 0.92rem; gap: 8px; }
+  .mng-row select { margin: 0; height: 34px; font-size: 0.85rem; width: auto; }
 </style>
 </head>
 <body>
 <div class="box">
+  <!-- 1. LOGIN -->
   <div id="v-login" class="auth">
     <h2>TSV Kalender-Login</h2>
     <input type="email" id="l-mail" placeholder="E-Mail-Adresse">
@@ -33,6 +83,8 @@
     <div id="l-msg" class="msg"></div>
     <button type="button" class="btn-sub" onclick="go('v-reg')">Noch kein Konto? Jetzt registrieren</button>
   </div>
+
+  <!-- 2. REGISTRIERUNG -->
   <div id="v-reg" class="auth hidden">
     <h2>TSV Registrierung</h2>
     <input type="text" id="r-name" placeholder="Vor- und Nachname">
@@ -42,40 +94,65 @@
     <select id="r-role" onchange="roleUI()">
       <option value="" disabled selected>Rolle wählen...</option>
       <option value="Eltern">Eltern (Nur Lesen)</option>
-      <option value="Trainer">Trainer (Eigene Mannschaft)</option>
+      <option value="Trainer">Trainer (Freigabe durch Jugendleiter)</option>
       <option value="Jugendleiter">Jugendleiter (Alle)</option>
       <option value="Vorstand">Vorstand / Admin (Alle)</option>
-    </select>
-    <select id="r-team" class="hidden">
-      <option value="" disabled selected>Mannschaft wählen...</option>
-      <option value="U11">U11</option><option value="U13">U13</option><option value="U15">U15</option>
     </select>
     <input type="password" id="r-code" class="hidden" placeholder="Code: Verein2026">
     <button type="button" onclick="doReg()">Konto erstellen</button>
     <div id="r-msg" class="msg"></div>
     <button type="button" class="btn-sub" onclick="go('v-login')">Zurück zum Login</button>
   </div>
-  <div id="v-app" class="hidden">
-    <div class="top">
-      <strong id="u-info">Hallo!</strong>
-      <button type="button" class="btn-gray" onclick="doLogout()">Ausloggen</button>
-    </div>
-    <div id="ed-box" class="ed hidden">
-      <input type="date" id="e-date">
-      <input type="text" id="e-title" placeholder="Termin">
-      <select id="e-team"><option value="U11">U11</option><option value="U13">U13</option><option value="U15">U15</option><option value="Alle">Alle</option></select>
-      <button type="button" onclick="addEv()">Speichern</button>
-    </div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <button type="button" style="width:auto; padding:6px 12px;" onclick="stepMonth(-1)">&lt;</button>
-      <strong id="m-lbl">Monat</strong>
-      <button type="button" style="width:auto; padding:6px 12px;" onclick="stepMonth(1)">&gt;</button>
-    </div>
-    <div class="grid" style="text-align:center; font-weight:bold; margin-bottom:4px;"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div>
-    <div class="grid" id="cal-grid"></div>
-  </div>
-</div>
 
+  <!-- 3. HAUPT-APP (APPLE KALENDER) -->
+  <div id="v-app" class="hidden" style="display:flex; flex-direction:column; flex:1;">
+    <div id="pending-banner" class="warn-banner hidden">Wartet auf Mannschafts-Freigabe durch Jugendleiter</div>
+    
+    <div class="ios-top">
+      <div class="m-title"><span id="m-name">Monat</span> <span class="m-year" id="m-year">2026</span></div>
+      <div class="top-actions">
+        <button type="button" id="btn-admin" class="admin-btn hidden" onclick="openAdmin()">Admin</button>
+        <button type="button" class="icon-btn" onclick="stepPeriod(-1)">&#8249;</button>
+        <button type="button" class="icon-btn" onclick="stepPeriod(1)">&#8250;</button>
+        <button type="button" id="btn-add-ev" class="icon-btn hidden" style="background:#ff3b30; color:#fff; font-weight:bold;" onclick="openEvModal()">+</button>
+      </div>
+    </div>
+
+    <div class="sub-bar">
+      <span id="u-info">Hallo!</span>
+      <span style="color:#ff3b30; font-weight:600; cursor:pointer;" onclick="doLogout()">Ausloggen</span>
+    </div>
+
+    <div class="seg-wrap">
+      <div class="seg-bar">
+        <button type="button" id="seg-month" class="seg-btn active" onclick="setView('month')">Monat</button>
+        <button type="button" id="seg-week" class="seg-btn" onclick="setView('week')">Woche</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <select id="sel-filter-team" class="filter-sel" onchange="drawCal()"></select>
+      <select id="sel-filter-lbl" class="filter-sel" onchange="drawCal()"></select>
+    </div>
+
+    <div id="month-grid-box" class="cal-wrap">
+      <div class="wk-row"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div>
+      <div class="days-grid" id="days-grid"></div>
+    </div>
+
+    <div class="agenda" id="agenda-box"></div>
+  </div>
+
+  <!-- MODAL: TERMIN ANLEGEN / EDITIEREN -->
+  <div id="ev-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('ev-modal')">
+    <div class="modal">
+      <div class="modal-top">
+        <strong id="ev-modal-title" style="font-size:1.15rem;">Neuer Termin</strong>
+        <span style="font-size:1.3rem; cursor:pointer; color:#8e8e93;" onclick="closeModal('ev-modal')">✕</span>
+      </div>
+      <input type="hidden" id="edit-ev-id">
+      <input type="date" id="e-date">
+      <input type="time" id="e-time" value="17:00">
 
 <script>
 var KEY = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
