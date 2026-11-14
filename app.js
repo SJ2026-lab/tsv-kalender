@@ -12,15 +12,35 @@ const firebaseConfig = {
   measurementId: "G-S138SYNHFL"
 };
 
-// Bereiche
+// Bereiche & Formulare
 const loginBox = document.getElementById("login-box");
 const registerBox = document.getElementById("register-box");
 const userSection = document.getElementById("user-section");
+const roleSelect = document.getElementById("reg-role");
+const teamWrapper = document.getElementById("team-wrapper");
+const teamSelect = document.getElementById("reg-team");
 
-// Fehlermeldungen & Anzeige
+// Fehler & User-Anzeige
 const loginError = document.getElementById("login-error");
 const regError = document.getElementById("reg-error");
-const userEmailSpan = document.getElementById("user-email");
+
+// Berechtigungen anhand der Rolle berechnen
+function getPermissions(role) {
+  const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
+  const canWrite = !["Eltern", "Fan"].includes(role); // Alle außer Eltern & Fan
+  const canRead = true; // Alle dürfen lesen
+  return { canRead, canWrite, isAdmin };
+}
+
+// Mannschafts-Dropdown ausblenden, wenn "Fan" gewählt wird
+roleSelect.addEventListener("change", () => {
+  if (roleSelect.value === "Fan") {
+    teamWrapper.classList.add("hidden");
+    teamSelect.value = "";
+  } else {
+    teamWrapper.classList.remove("hidden");
+  }
+});
 
 function translateError(msg) {
   const messages = {
@@ -35,26 +55,58 @@ function translateError(msg) {
   return messages[msg] || "Fehler: " + msg;
 }
 
-// Ansicht umschalten
-function updateUI(email) {
+// UI nach Login/Logout aktualisieren
+function updateUI(userData) {
   loginError.textContent = "";
   regError.textContent = "";
-  if (email) {
-    localStorage.setItem("tsv_user_email", email);
+
+  if (userData && userData.email) {
+    localStorage.setItem("tsv_user_data", JSON.stringify(userData));
     loginBox.classList.add("hidden");
     registerBox.classList.add("hidden");
     userSection.classList.remove("hidden");
-    userEmailSpan.textContent = email;
+
+    document.getElementById("user-email").textContent = userData.email;
+    document.getElementById("user-role").textContent = userData.role || "Mitglied";
+
+    const teamRow = document.getElementById("user-team-row");
+    if (userData.role === "Fan" || !userData.team) {
+      teamRow.classList.add("hidden");
+    } else {
+      teamRow.classList.remove("hidden");
+      document.getElementById("user-team").textContent = userData.team;
+    }
+
+    // Rechte-Badges und Buttons ein-/ausblenden
+    const perms = getPermissions(userData.role);
+    const badgesDiv = document.getElementById("user-badges");
+    badgesDiv.innerHTML = "";
+
+    if (perms.isAdmin) {
+      badgesDiv.innerHTML += '<span class="badge badge-admin">Admin</span>';
+    }
+    if (perms.canWrite) {
+      badgesDiv.innerHTML += '<span class="badge badge-write">Lesen & Schreiben</span>';
+      document.getElementById("write-area").classList.remove("hidden");
+    } else {
+      badgesDiv.innerHTML += '<span class="badge badge-read">Nur Lesen</span>';
+      document.getElementById("write-area").classList.add("hidden");
+    }
+
+    if (perms.isAdmin) {
+      document.getElementById("admin-area").classList.remove("hidden");
+    } else {
+      document.getElementById("admin-area").classList.add("hidden");
+    }
   } else {
-    localStorage.removeItem("tsv_user_email");
+    localStorage.removeItem("tsv_user_data");
     loginBox.classList.remove("hidden");
     registerBox.classList.add("hidden");
     userSection.classList.add("hidden");
-    userEmailSpan.textContent = "";
   }
 }
 
-// Wechsel zwischen Login-Maske und Registrierungs-Maske
+// Masken umschalten
 document.getElementById("show-register-btn").addEventListener("click", () => {
   loginError.textContent = "";
   loginBox.classList.add("hidden");
@@ -85,24 +137,58 @@ async function firebaseAuthRequest(endpoint, email, password) {
   return data;
 }
 
-// Einloggen (ohne Vereinspasswort)
+// Profil in Firebase Realtime Database speichern
+async function saveUserProfile(uid, idToken, profile) {
+  const url = `${firebaseConfig.databaseURL}/users/${uid}.json?auth=${idToken}`;
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile)
+  });
+  if (!response.ok) {
+    throw new Error("Profil konnte nicht in der Datenbank gespeichert werden.");
+  }
+}
+
+// Profil aus Firebase Realtime Database laden
+async function loadUserProfile(uid, idToken) {
+  const url = `${firebaseConfig.databaseURL}/users/${uid}.json?auth=${idToken}`;
+  const response = await fetch(url);
+  if (!response.ok) return null;
+  return await response.json();
+}
+
+// Einloggen
 document.getElementById("login-btn").addEventListener("click", async () => {
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
   loginError.textContent = "Logge ein...";
   try {
-    const data = await firebaseAuthRequest("signInWithPassword", email, password);
+    const authData = await firebaseAuthRequest("signInWithPassword", email, password);
+    const profile = await loadUserProfile(authData.localId, authData.idToken);
+
+    const userData = profile || {
+      email: authData.email,
+      role: "Eltern",
+      team: "",
+      ...getPermissions("Eltern")
+    };
+    userData.idToken = authData.idToken;
+    userData.uid = authData.localId;
+
     document.getElementById("login-email").value = "";
     document.getElementById("login-password").value = "";
-    updateUI(data.email);
+    updateUI(userData);
   } catch (err) {
     loginError.textContent = translateError(err.message);
   }
 });
 
-// Registrieren (prüft zuerst das Vereinspasswort!)
+// Registrieren
 document.getElementById("register-btn").addEventListener("click", async () => {
   const clubPw = document.getElementById("club-password").value.trim();
+  const role = roleSelect.value;
+  const team = role === "Fan" ? "" : teamSelect.value;
   const email = document.getElementById("reg-email").value.trim();
   const password = document.getElementById("reg-password").value;
 
@@ -110,14 +196,39 @@ document.getElementById("register-btn").addEventListener("click", async () => {
     regError.textContent = "Das Vereinspasswort ist falsch!";
     return;
   }
+  if (!role) {
+    regError.textContent = "Bitte wähle deine Funktion im Verein aus!";
+    return;
+  }
+  if (role !== "Fan" && !team) {
+    regError.textContent = "Bitte wähle deine Mannschaft aus!";
+    return;
+  }
 
-  regError.textContent = "Konto wird erstellt...";
+  regError.textContent = "Konto & Profil werden erstellt...";
   try {
-    const data = await firebaseAuthRequest("signUp", email, password);
+    const authData = await firebaseAuthRequest("signUp", email, password);
+    const permissions = getPermissions(role);
+
+    const profile = {
+      email: authData.email,
+      role: role,
+      team: team,
+      canRead: permissions.canRead,
+      canWrite: permissions.canWrite,
+      isAdmin: permissions.isAdmin,
+      createdAt: new Date().toISOString()
+    };
+
+    await saveUserProfile(authData.localId, authData.idToken, profile);
+
     document.getElementById("club-password").value = "";
     document.getElementById("reg-email").value = "";
     document.getElementById("reg-password").value = "";
-    updateUI(data.email);
+    roleSelect.value = "";
+    teamSelect.value = "";
+
+    updateUI({ ...profile, uid: authData.localId, idToken: authData.idToken });
   } catch (err) {
     regError.textContent = translateError(err.message);
   }
@@ -128,6 +239,15 @@ document.getElementById("logout-btn").addEventListener("click", () => {
   updateUI(null);
 });
 
-// Beim Laden prüfen, ob schon eingeloggt
-updateUI(localStorage.getItem("tsv_user_email"));
+// Gespeicherten Login beim Laden wiederherstellen
+const savedUser = localStorage.getItem("tsv_user_data");
+if (savedUser) {
+  try {
+    updateUI(JSON.parse(savedUser));
+  } catch (e) {
+    updateUI(null);
+  }
+} else {
+  updateUI(null);
+}
 
