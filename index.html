@@ -3,26 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TSV Kalender – Zugang</title>
+  <title>TSV Kalender</title>
   <style>
-    body { font-family: sans-serif; max-width: 420px; margin: 40px auto; padding: 20px; background-color: #f9f9f9; }
-    .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    input, select, button { display: block; width: 100%; margin-bottom: 12px; padding: 12px; box-sizing: border-box; font-size: 16px; }
-    input, select { border: 1px solid #ccc; border-radius: 4px; background-color: white; }
+    body { font-family: sans-serif; max-width: 500px; margin: 20px auto; padding: 15px; background-color: #f4f6f8; }
+    .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    input, select, textarea, button { display: block; width: 100%; margin-bottom: 12px; padding: 11px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+    input, select, textarea { border: 1px solid #ccc; border-radius: 4px; background-color: white; }
     label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #333; }
     button { cursor: pointer; background-color: #039be5; color: white; border: none; border-radius: 4px; font-weight: bold; }
     button:hover { background-color: #0288d1; }
     .btn-secondary { background-color: #607d8b; }
-    .btn-secondary:hover { background-color: #455a64; }
     .btn-success { background-color: #43a047; }
-    .btn-success:hover { background-color: #2e7d32; }
     .hidden { display: none; }
     .info-text { font-size: 13px; color: #555; margin-bottom: 14px; }
-    .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; color: white; margin-right: 5px; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; }
     .badge-admin { background-color: #d32f2f; }
     .badge-write { background-color: #f57c00; }
     .badge-read { background-color: #388e3c; }
-    .profile-card { background: #f1f8e9; border: 1px solid #c5e1a5; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 14px; }
+    .profile-card { background: #f1f8e9; border: 1px solid #c5e1a5; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; }
+    .form-panel { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
   </style>
 </head>
 <body>
@@ -38,7 +37,7 @@
     <p id="login-error" style="color: #d32f2f; font-size: 14px; font-weight: bold;"></p>
   </div>
 
-  <!-- 2. Registrierung (mit Vereinspasswort, Rolle & Mannschaft) -->
+  <!-- 2. Registrierung -->
   <div id="register-box" class="box hidden">
     <h2>Mitglieds-Konto erstellen</h2>
     <p class="info-text">Bitte gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion im Verein aus.</p>
@@ -57,7 +56,6 @@
       <option value="Fan">Fan</option>
     </select>
 
-    <!-- Mannschaftsauswahl (wird bei "Fan" automatisch ausgeblendet) -->
     <div id="team-wrapper">
       <label for="reg-team">Mannschaft</label>
       <select id="reg-team">
@@ -85,29 +83,90 @@
     <p id="reg-error" style="color: #d32f2f; font-size: 14px; font-weight: bold;"></p>
   </div>
 
-  <!-- 3. Eingeloggter Bereich (TSV-Kalender & Rollen-Anzeige) -->
+  <!-- 3. Eingeloggter Bereich (TSV-Kalender) -->
   <div id="user-section" class="box hidden">
-    <h2>TSV-Kalender</h2>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <h2 style="margin:0;">TSV-Kalender</h2>
+      <button type="button" id="logout-btn" style="background-color:#e53935; width:auto; padding:8px 12px; margin:0; font-size:13px;">Ausloggen</button>
+    </div>
+
     <div class="profile-card">
-      <div><strong>E-Mail:</strong> <span id="user-email"></span></div>
-      <div><strong>Funktion:</strong> <span id="user-role"></span></div>
+      <div><strong>Angemeldet:</strong> <span id="user-email"></span> (<span id="user-role"></span>)</div>
       <div id="user-team-row"><strong>Mannschaft:</strong> <span id="user-team"></span></div>
-      <div style="margin-top: 8px;" id="user-badges"></div>
+      <div style="margin-top: 6px;" id="user-badges"></div>
     </div>
 
-    <!-- Bereich nur für Schreibberechtigte (Trainer + Admins) -->
-    <div id="write-area" class="hidden" style="margin-bottom: 15px;">
-      <button type="button" style="background-color: #2e7d32;">+ Neuen Termin eintragen</button>
+    <!-- Schreibbereich (nur für Trainer & Admins) -->
+    <div id="write-area" class="hidden">
+      <button type="button" id="toggle-termin-form" class="btn-success">+ Neuen Termin eintragen</button>
+      
+      <div id="termin-formular" class="form-panel hidden">
+        <h3 style="margin-top:0;">Neuer Termin</h3>
+        <label for="termin-titel">Was findet statt? (z. B. Training, Heimspiel)</label>
+        <input type="text" id="termin-titel" placeholder="Titel des Termins">
+
+        <label for="termin-team">Für welche Mannschaft?</label>
+        <select id="termin-team">
+          <option value="Alle Mannschaften">Alle Mannschaften (Gesamtverein)</option>
+          <option value="U7">U7</option>
+          <option value="U9">U9</option>
+          <option value="U11">U11</option>
+          <option value="U13">U13</option>
+          <option value="U15">U15</option>
+          <option value="Altherren">Altherren</option>
+          <option value="Damen">Damen</option>
+          <option value="Erste Mannschaft">Erste Mannschaft</option>
+          <option value="2. Mannschaft">2. Mannschaft</option>
+        </select>
+
+        <div style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label for="termin-datum">Datum</label>
+            <input type="date" id="termin-datum">
+          </div>
+          <div style="flex:1;">
+            <label for="termin-uhrzeit">Uhrzeit</label>
+            <input type="time" id="termin-uhrzeit">
+          </div>
+        </div>
+
+        <label for="termin-ort">Ort / Sportplatz (optional)</label>
+        <input type="text" id="termin-ort" placeholder="z. B. Hauptplatz, Sporthalle">
+
+        <label for="termin-info">Zusatzinfos (optional)</label>
+        <textarea id="termin-info" rows="2" placeholder="z. B. Treffpunkt 30 Min. vorher"></textarea>
+
+        <button type="button" id="save-termin-btn" class="btn-success">Termin speichern</button>
+        <p id="termin-msg" style="font-size:13px; font-weight:bold; margin:0;"></p>
+      </div>
     </div>
 
-    <!-- Bereich nur für Admins (Jugendleiter, Vorstand, Spartenleiter) -->
+    <!-- Admin-Button (nur für Jugendleiter, Vorstand, Spartenleiter) -->
     <div id="admin-area" class="hidden" style="margin-bottom: 15px;">
-      <button type="button" style="background-color: #6a1b9a;">Admin-Bereich (Mitglieder & Rechte)</button>
+      <button type="button" id="open-admin-btn" style="background-color: #6a1b9a;">Admin-Bereich (Mitglieder verwalten)</button>
     </div>
 
-    <button type="button" id="logout-btn" style="background-color: #e53935;">Ausloggen</button>
+    <!-- Filter für alle Nutzer -->
+    <label for="filter-team">Termine filtern nach Mannschaft:</label>
+    <select id="filter-team">
+      <option value="ALLE">Alle Termine anzeigen</option>
+      <option value="U7">U7</option>
+      <option value="U9">U9</option>
+      <option value="U11">U11</option>
+      <option value="U13">U13</option>
+      <option value="U15">U15</option>
+      <option value="Altherren">Altherren</option>
+      <option value="Damen">Damen</option>
+      <option value="Erste Mannschaft">Erste Mannschaft</option>
+      <option value="2. Mannschaft">2. Mannschaft</option>
+    </select>
+
+    <!-- Hier erscheinen die Termine -->
+    <div id="termine-liste" style="margin-top: 15px;"></div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <!-- Beide Skripte einbinden -->
+  <script src="kalender.js?v=1"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>
