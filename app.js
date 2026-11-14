@@ -1,8 +1,7 @@
-// Deine komplette Firebase-Konfiguration für kalendertsv
 const firebaseConfig = {
   apiKey: "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8",
-  authDomain: "://firebaseapp.com",
-  databaseURL: "https://firebasedatabase.app",
+  authDomain: "kalendertsv.firebaseapp.com",
+  databaseURL: "https://kalendertsv-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "kalendertsv",
   storageBucket: "kalendertsv.firebasestorage.app",
   messagingSenderId: "693122891208",
@@ -10,7 +9,6 @@ const firebaseConfig = {
   measurementId: "G-S138SYNHFL"
 };
 
-// HTML-Elemente referenzieren
 const errorMsg = document.getElementById("error-msg");
 const authSection = document.getElementById("auth-section");
 const userSection = document.getElementById("user-section");
@@ -18,7 +16,6 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const userEmailSpan = document.getElementById("user-email");
 
-// Deutsche Fehlermeldungen
 function showError(msg) {
   const messages = {
     "INVALID_EMAIL": "Bitte gib eine gültige E-Mail-Adresse ein.",
@@ -32,7 +29,6 @@ function showError(msg) {
   errorMsg.textContent = messages[msg] || "Fehler: " + msg;
 }
 
-// Ansicht umschalten (Login <-> Kalender)
 function updateUI(email) {
   if (email) {
     localStorage.setItem("tsv_user_email", email);
@@ -50,9 +46,11 @@ function updateUI(email) {
   }
 }
 
-// Verbindung zu Firebase Authentication
 async function firebaseAuthRequest(endpoint, email, password) {
-  const url = `https://googleapis.com{endpoint}?key=${firebaseConfig.apiKey}`;
+  const host = "https://identitytoolkit." + "googleapis.com";
+  const path = "/v1/accounts:" + endpoint;
+  const url = host + path + "?key=" + firebaseConfig.apiKey;
+
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -65,7 +63,6 @@ async function firebaseAuthRequest(endpoint, email, password) {
   return data;
 }
 
-// Registrieren
 document.getElementById("register-btn").addEventListener("click", async () => {
   errorMsg.textContent = "Registriere...";
   try {
@@ -76,7 +73,6 @@ document.getElementById("register-btn").addEventListener("click", async () => {
   }
 });
 
-// Einloggen
 document.getElementById("login-btn").addEventListener("click", async () => {
   errorMsg.textContent = "Logge ein...";
   try {
@@ -87,10 +83,8 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   }
 });
 
-// Ausloggen
 document.getElementById("logout-btn").addEventListener("click", () => {
   updateUI(null);
 });
 
-// Beim Start prüfen, ob der Nutzer bereits eingeloggt ist
 updateUI(localStorage.getItem("tsv_user_email"));
