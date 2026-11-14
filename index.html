@@ -6,8 +6,8 @@
   <title>TSV Kalender</title>
   <style>
     :root {
-      --primary: #0f172a;       /* Tiefes Sport-Dunkelblau */
-      --accent: #10b981;        /* Frisches Rasen-Grün */
+      --primary: #0f172a;
+      --accent: #10b981;
       --accent-hover: #059669;
       --blue: #2563eb;
       --bg: #f1f5f9;
@@ -29,7 +29,6 @@
       line-height: 1.5;
     }
 
-    /* App-Container */
     .app-wrapper {
       max-width: 540px;
       margin: 0 auto;
@@ -37,7 +36,6 @@
       padding-bottom: 50px;
     }
 
-    /* Sportlicher Top-Banner */
     .top-banner {
       background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
       color: white;
@@ -50,11 +48,7 @@
       align-items: center;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .brand { display: flex; align-items: center; gap: 12px; }
 
     .club-crest {
       width: 46px;
@@ -71,20 +65,9 @@
       box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
     }
 
-    .brand h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-    }
+    .brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+    .brand p { margin: 0; font-size: 12px; color: #94a3b8; }
 
-    .brand p {
-      margin: 0;
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    /* Moderne Karten */
     .box {
       background: var(--card);
       padding: 24px;
@@ -93,13 +76,7 @@
       border: 1px solid var(--border);
     }
 
-    h2 {
-      margin-top: 0;
-      margin-bottom: 18px;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--primary);
-    }
+    h2 { margin-top: 0; margin-bottom: 18px; font-size: 20px; font-weight: 700; color: var(--primary); }
 
     label {
       display: block;
@@ -132,7 +109,6 @@
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
     }
 
-    /* Moderne Buttons */
     button {
       display: flex;
       align-items: center;
@@ -148,10 +124,7 @@
       border: none;
       border-radius: 12px;
       cursor: pointer;
-      transition: transform 0.1s ease, background-color 0.2s ease;
     }
-
-    button:active { transform: scale(0.98); }
 
     .btn-success {
       background-color: var(--accent);
@@ -160,10 +133,7 @@
     }
     .btn-success:hover { background-color: var(--accent-hover); color: white; }
 
-    .btn-secondary {
-      background-color: #e2e8f0;
-      color: #334155;
-    }
+    .btn-secondary { background-color: #e2e8f0; color: #334155; }
     .btn-secondary:hover { background-color: #cbd5e1; }
 
     .btn-logout {
@@ -174,20 +144,11 @@
       margin: 0;
       font-size: 13px;
       border-radius: 10px;
-      backdrop-filter: blur(4px);
     }
-    .btn-logout:hover { background: rgba(239, 68, 68, 0.85); }
 
     .hidden { display: none !important; }
+    .info-text { font-size: 14px; color: var(--muted); margin-top: -8px; margin-bottom: 18px; }
 
-    .info-text {
-      font-size: 14px;
-      color: var(--muted);
-      margin-top: -8px;
-      margin-bottom: 18px;
-    }
-
-    /* Profil-Leiste im Dashboard */
     .profile-pill-bar {
       background: #f8fafc;
       border: 1px solid var(--border);
@@ -201,10 +162,7 @@
       gap: 8px;
     }
 
-    .profile-info {
-      font-size: 13px;
-      color: var(--text);
-    }
+    .profile-info { font-size: 13px; color: var(--text); }
 
     .badge {
       display: inline-block;
@@ -212,13 +170,11 @@
       border-radius: 20px;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.3px;
     }
     .badge-admin { background-color: #fee2e2; color: #b91c1c; }
     .badge-write { background-color: #fef3c7; color: #b45309; }
     .badge-read { background-color: #dcfce7; color: #15803d; }
 
-    /* Formular-Panel für neue Termine */
     .form-panel {
       background: #f8fafc;
       border: 1.5px solid var(--border);
@@ -227,7 +183,6 @@
       margin-bottom: 20px;
     }
 
-    /* Filter-Box */
     .filter-bar {
       background: var(--card);
       padding: 14px 16px;
@@ -237,7 +192,6 @@
     }
     .filter-bar select { margin-bottom: 0; }
 
-    /* Termin-Karten im modernen Sport-App-Look */
     .event-card {
       background: var(--card);
       border: 1px solid var(--border);
@@ -260,21 +214,8 @@
       flex-shrink: 0;
     }
 
-    .date-badge .day {
-      font-size: 20px;
-      font-weight: 800;
-      line-height: 1.1;
-    }
-
-    .date-badge .month {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: #93c5fd;
-      font-weight: 700;
-      margin-top: 2px;
-    }
-
+    .date-badge .day { font-size: 20px; font-weight: 800; line-height: 1.1; }
+    .date-badge .month { font-size: 11px; text-transform: uppercase; color: #93c5fd; font-weight: 700; margin-top: 2px; }
     .event-content { flex: 1; min-width: 0; }
 
     .team-tag {
@@ -288,29 +229,9 @@
       margin-bottom: 5px;
     }
 
-    .event-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--primary);
-      margin: 0 0 4px 0;
-    }
-
-    .event-meta {
-      font-size: 13px;
-      color: var(--muted);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .event-note {
-      font-size: 13px;
-      color: #475569;
-      background: #f8fafc;
-      padding: 8px 10px;
-      border-radius: 8px;
-      margin-top: 8px;
-    }
+    .event-title { font-size: 16px; font-weight: 700; color: var(--primary); margin: 0 0 4px 0; }
+    .event-meta { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; }
+    .event-note { font-size: 13px; color: #475569; background: #f8fafc; padding: 8px 10px; border-radius: 8px; margin-top: 8px; }
 
     .btn-delete-small {
       background: #fee2e2;
@@ -322,7 +243,6 @@
       margin-top: 10px;
       margin-bottom: 0;
     }
-    .btn-delete-small:hover { background: #ef4444; color: white; }
   </style>
 </head>
 <body>
@@ -391,3 +311,21 @@
             <option value="">Bitte Mannschaft wählen...</option>
             <option value="U7">U7</option>
             <option value="U9">U9</option>
+            <option value="U11">U11</option>
+            <option value="U13">U13</option>
+            <option value="U15">U15</option>
+            <option value="Altherren">Altherren</option>
+            <option value="Damen">Damen</option>
+            <option value="Erste Mannschaft">Erste Mannschaft</option>
+            <option value="2. Mannschaft">2. Mannschaft</option>
+          </select>
+        </div>
+
+        <label for="reg-email">Deine E-Mail-Adresse</label>
+        <input type="email" id="reg-email" placeholder="name@beispiel.de" required>
+
+        <label for="reg-password">Eigenes Passwort (min. 6 Zeichen)</label>
+        <input type="password" id="reg-password" placeholder="Mindestens 6 Zeichen" required>
+
+        <button type="button" id="register-btn" class="btn-success">Registrierung abschließen</button>
+        <button type="button" id="back-to-login-btn" class="btn-secondary">Zurück zum Login</button>
