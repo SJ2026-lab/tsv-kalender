@@ -8,119 +8,171 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; background: #f2f2f7; margin: 0; padding: 0; color: #000; }
   .app { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #fff; display: flex; flex-direction: column; position: relative; }
-  input, select, button { width: 100%; height: 46px; padding: 0 14px; margin: 6px 0; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; background: #f9f9fb; font-family: inherit; }
+  input, select, button { width: 100%; height: 44px; padding: 0 12px; margin: 6px 0; border: 1px solid #d1d1d6; border-radius: 10px; font-size: 16px; background: #f9f9fb; font-family: inherit; }
   input:focus, select:focus { outline: none; border-color: #ff3b30; background: #fff; }
   button { background: #ff3b30; color: #fff; border: none; font-weight: 600; cursor: pointer; }
   button:active { opacity: 0.8; }
   .hidden { display: none !important; }
 
+  /* Apple Top Header */
   .ios-top { padding: 14px 16px 8px; display: flex; justify-content: space-between; align-items: center; }
-  .m-title { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; }
+  .m-title { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 6px; }
   .m-year { color: #ff3b30; font-weight: 600; }
-  .top-actions { display: flex; gap: 8px; align-items: center; }
+  .top-actions { display: flex; gap: 6px; align-items: center; }
   .icon-btn { width: 34px; height: 34px; border-radius: 50%; background: #f2f2f7; color: #ff3b30; padding: 0; margin: 0; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+  .txt-btn { width: auto; height: 32px; padding: 0 10px; border-radius: 16px; background: #f2f2f7; color: #1c1c1e; font-size: 0.8rem; margin: 0; }
 
-  .filter-row { display: flex; gap: 6px; padding: 6px 16px; overflow-x: auto; scrollbar-width: none; }
-  .filter-row::-webkit-scrollbar { display: none; }
-  .chip { width: auto; height: 28px; padding: 0 12px; margin: 0; border-radius: 14px; background: #f2f2f7; color: #3a3a3c; font-size: 0.78rem; font-weight: 600; flex-shrink: 0; }
-  .chip.active { background: #ff3b30; color: #fff; }
-  .chip-lbl.active { background: #1c1c1e; color: #fff; }
+  /* iOS Segmented Control (Monat / Woche) */
+  .seg-wrap { padding: 4px 16px 8px; }
+  .seg-bar { display: flex; background: #e5e5ea; border-radius: 9px; padding: 2px; }
+  .seg-btn { flex: 1; height: 28px; margin: 0; background: transparent; color: #000; font-size: 0.82rem; font-weight: 600; border-radius: 7px; }
+  .seg-btn.active { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
+  /* Zwei kompakte Filter-Dropdown-Buttons */
+  .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 10px; border-bottom: 1px solid #e5e5ea; }
+  .filter-sel { height: 34px; margin: 0; padding: 0 10px; font-size: 0.82rem; font-weight: 600; border-radius: 8px; background: #f2f2f7; border: none; color: #1c1c1e; }
+
+  /* Monatsraster */
   .cal-wrap { padding: 6px 10px 10px; border-bottom: 1px solid #e5e5ea; }
   .wk-row, .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
   .wk-row div { font-size: 0.7rem; font-weight: 600; color: #8e8e93; padding-bottom: 6px; text-transform: uppercase; }
-  .wk-row div:nth-child(6), .wk-row div:nth-child(7) { color: #aeaeb2; }
   .d-cell { height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; border-top: 0.5px solid #f2f2f7; }
-  .d-num { font-size: 1.05rem; font-weight: 400; width: 32px; height: 32px; line-height: 32px; border-radius: 50%; }
+  .d-num { font-size: 1.05rem; width: 32px; height: 32px; line-height: 32px; border-radius: 50%; }
   .d-cell.wknd .d-num { color: #8e8e93; }
   .d-cell.today .d-num { color: #ff3b30; font-weight: 700; }
   .d-cell.selected .d-num { background: #1c1c1e; color: #fff; font-weight: 600; }
   .d-cell.today.selected .d-num { background: #ff3b30; color: #fff; }
   .dots { display: flex; gap: 3px; height: 5px; margin-top: 1px; }
-  .dot { width: 5px; height: 5px; border-radius: 50%; background: #8e8e93; }
-  .dot-Training { background: #34c759; } .dot-Spiel { background: #ff3b30; } .dot-Turnier { background: #ff9500; } .dot-Sitzung { background: #007aff; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
 
+  /* Tages-Agenda & Wochen-Agenda */
   .agenda { flex: 1; padding: 14px 16px 80px; background: #f2f2f7; }
-  .ag-head { font-size: 0.85rem; font-weight: 700; color: #6e6e73; margin-bottom: 10px; }
-  .ev-card { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-left: 4px solid #8e8e93; }
-  .ev-Training { border-left-color: #34c759; } .ev-Spiel { border-left-color: #ff3b30; } .ev-Turnier { border-left-color: #ff9500; } .ev-Sitzung { border-left-color: #007aff; }
+  .ag-head { font-size: 0.85rem; font-weight: 700; color: #6e6e73; margin: 12px 0 6px; text-transform: uppercase; }
+  .ag-head:first-child { margin-top: 0; }
+  .ev-card { background: #fff; border-radius: 12px; padding: 11px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.04); border-left: 4px solid #8e8e93; }
   .ev-meta { display: flex; gap: 6px; align-items: center; margin-bottom: 3px; }
-  .lbl-tag { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: #fff; background: #8e8e93; text-transform: uppercase; }
-  .bg-Training { background: #34c759; } .bg-Spiel { background: #ff3b30; } .bg-Turnier { background: #ff9500; } .bg-Sitzung { background: #007aff; }
+  .lbl-tag { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: #fff; text-transform: uppercase; }
   .team-txt { font-size: 0.78rem; font-weight: 700; color: #6e6e73; }
   .ev-title { font-size: 0.98rem; font-weight: 600; color: #000; }
   .ev-actions { display: flex; gap: 6px; }
   .act-btn { width: 30px; height: 30px; border-radius: 8px; background: #f2f2f7; color: #1c1c1e; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; cursor: pointer; }
   .act-del { color: #ff3b30; background: #fff0f0; }
 
+  /* Modals */
   .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; z-index: 30; }
-  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; }
+  .modal { background: #fff; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px 18px 30px; max-height: 85vh; overflow-y: auto; }
   .modal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f2f2f7; padding-bottom: 10px; }
+  .mng-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f2f2f7; font-size: 0.95rem; }
 </style>
 </head>
 <body>
 <div class="app">
+  <!-- HEADER -->
   <div class="ios-top">
     <div class="m-title"><span id="m-name">Monat</span> <span class="m-year" id="m-year">2026</span></div>
     <div class="top-actions">
-      <button type="button" class="icon-btn" onclick="stepMonth(-1)">&#8249;</button>
-      <button type="button" class="icon-btn" onclick="stepMonth(1)">&#8250;</button>
+      <button type="button" class="txt-btn" onclick="openMng()">Verwalten</button>
+      <button type="button" class="icon-btn" onclick="stepPeriod(-1)">&#8249;</button>
+      <button type="button" class="icon-btn" onclick="stepPeriod(1)">&#8250;</button>
       <button type="button" class="icon-btn" style="background:#ff3b30; color:#fff; font-weight:bold;" onclick="openEvModal()">+</button>
     </div>
   </div>
 
-  <div class="filter-row">
-    <button type="button" class="chip chip-team active" onclick="setTeamFilter('ALL', this)">Alle Teams</button>
-    <button type="button" class="chip chip-team" onclick="setTeamFilter('U11', this)">U11</button>
-    <button type="button" class="chip chip-team" onclick="setTeamFilter('U13', this)">U13</button>
-    <button type="button" class="chip chip-team" onclick="setTeamFilter('U15', this)">U15</button>
-    <button type="button" class="chip chip-team" onclick="setTeamFilter('Verein', this)">Verein</button>
+  <!-- MONATS- / WOCHEN-UMSCHALTER -->
+  <div class="seg-wrap">
+    <div class="seg-bar">
+      <button type="button" id="seg-month" class="seg-btn active" onclick="setView('month')">Monat</button>
+      <button type="button" id="seg-week" class="seg-btn" onclick="setView('week')">Woche</button>
+    </div>
   </div>
 
-  <div class="filter-row">
-    <button type="button" class="chip chip-lbl active" onclick="setLblFilter('ALL', this)">Alle Labels</button>
-    <button type="button" class="chip chip-lbl" onclick="setLblFilter('Training', this)">Training</button>
-    <button type="button" class="chip chip-lbl" onclick="setLblFilter('Spiel', this)">Spiel</button>
-    <button type="button" class="chip chip-lbl" onclick="setLblFilter('Turnier', this)">Turnier</button>
-    <button type="button" class="chip chip-lbl" onclick="setLblFilter('Sitzung', this)">Sitzung</button>
+  <!-- ZWEI KOMPAKTE AUSWAHL-BUTTONS (FILTER) -->
+  <div class="filter-grid">
+    <select id="sel-filter-team" class="filter-sel" onchange="drawCal()"></select>
+    <select id="sel-filter-lbl" class="filter-sel" onchange="drawCal()"></select>
   </div>
 
-  <div class="cal-wrap">
+  <!-- MONATSRASTER (In Wochenansicht ausgeblendet) -->
+  <div id="month-grid-box" class="cal-wrap">
     <div class="wk-row"><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div></div>
     <div class="days-grid" id="days-grid"></div>
   </div>
 
-  <div class="agenda">
-    <div class="ag-head" id="ag-date-lbl">Termine</div>
-    <div id="ag-list"></div>
-  </div>
+  <!-- AGENDA (Zeigt entweder gewählten Tag oder komplette Woche) -->
+  <div class="agenda" id="agenda-box"></div>
 
-  <div id="ev-modal" class="modal-bg hidden" onclick="if(event.target===this)closeEvModal()">
+  <!-- MODAL: TERMIN ANLEGEN / EDITIEREN -->
+  <div id="ev-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('ev-modal')">
     <div class="modal">
       <div class="modal-top">
         <strong id="ev-modal-title" style="font-size:1.15rem;">Neuer Termin</strong>
-        <span style="font-size:1.3rem; cursor:pointer; color:#8e8e93;" onclick="closeEvModal()">✕</span>
+        <span style="font-size:1.3rem; cursor:pointer; color:#8e8e93;" onclick="closeModal('ev-modal')">✕</span>
       </div>
       <input type="hidden" id="edit-ev-id">
       <input type="date" id="e-date">
       <input type="time" id="e-time" value="17:00">
       <input type="text" id="e-title" placeholder="Titel (z.B. Heimspiel gegen ...)">
-      <select id="e-label">
-        <option value="Training">Label: Training</option>
-        <option value="Spiel">Label: Spiel</option>
-        <option value="Turnier">Label: Turnier</option>
-        <option value="Sitzung">Label: Sitzung / Sonstiges</option>
-      </select>
-      <select id="e-team">
-        <option value="U11">U11</option>
-        <option value="U13">U13</option>
-        <option value="U15">U15</option>
-        <option value="Verein">Gesamter Verein</option>
-      </select>
+      <select id="e-label"></select>
+      <select id="e-team"></select>
       <button type="button" onclick="saveEv()">Speichern</button>
     </div>
   </div>
+
+  <!-- MODAL: MANNSCHAFTEN & LABELS HINZUFÜGEN -->
+  <div id="mng-modal" class="modal-bg hidden" onclick="if(event.target===this)closeModal('mng-modal')">
+    <div class="modal">
+      <div class="modal-top">
+        <strong style="font-size:1.15rem;">Mannschaften & Labels</strong>
+        <span style="font-size:1.3rem; cursor:pointer; color:#8e8e93;" onclick="closeModal('mng-modal')">✕</span>
+      </div>
+
+      <h4 style="margin:4px 0;">Mannschaft hinzufügen</h4>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="new-team" placeholder="z.B. E-Jugend">
+        <button type="button" style="width:auto; padding:0 16px;" onclick="addTeam()">+</button>
+      </div>
+      <div id="mng-teams-list" style="margin-bottom:16px;"></div>
+
+      <h4 style="margin:8px 0 4px;">Label hinzufügen</h4>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="new-lbl" placeholder="z.B. Pokalspiel">
+        <input type="color" id="new-lbl-color" value="#007aff" style="width:54px; padding:4px;">
+        <button type="button" style="width:auto; padding:0 16px;" onclick="addLabel()">+</button>
+      </div>
+      <div id="mng-lbls-list"></div>
+    </div>
+  </div>
 </div>
+<script>
+var todayObj = new Date();
+var todayStr = fmtDate(todayObj);
+var curDate = new Date();
+var selectedDate = todayStr;
+var viewMode = "month";
+
+var teams = JSON.parse(localStorage.getItem('tsv_teams')) || ["U11", "U13", "U15", "Verein"];
+var labels = JSON.parse(localStorage.getItem('tsv_labels')) || [
+  { name: "Training", color: "#34c759" },
+  { name: "Spiel", color: "#ff3b30" },
+  { name: "Turnier", color: "#ff9500" },
+  { name: "Sitzung", color: "#007aff" }
+];
+var events = JSON.parse(localStorage.getItem('tsv_events_v2')) || [
+  { id: "1", date: todayStr, time: "17:00", title: "Mannschaftstraining", label: "Training", team: "U11" },
+  { id: "2", date: todayStr, time: "18:30", title: "Punktspiel Heim", label: "Spiel", team: "U13" }
+];
+
+function fmtDate(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+}
+
+function saveData() {
+  localStorage.setItem('tsv_teams', JSON.stringify(teams));
+  localStorage.setItem('tsv_labels', JSON.stringify(labels));
+  localStorage.setItem('tsv_events_v2', JSON.stringify(events));
+}
+
+function getLblColor(lblName) {
 
 <script>
 var todayObj = new Date();
