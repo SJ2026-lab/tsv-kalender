@@ -1,78 +1,101 @@
-// kalender.js – Verwaltung aller TSV-Termine in Firebase
+// kalender.js – Verwaltung aller TSV-Termine
 
-const kalenderDbUrl = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+const kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+const MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
 
-// Termine aus Firebase laden und anzeigen
+// Hilfsfunktion: Eingeloggten Nutzer aus dem Speicher holen
+function getAktuellerUser() {
+  const userJson = localStorage.getItem("tsv_user_data");
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson);
+  } catch (e) {
+    return null;
+  }
+}
+
+// Termine laden und im modernen Karten-Design anzeigen
 async function ladeTermine() {
   const listeDiv = document.getElementById("termine-liste");
-  const filterTeam = document.getElementById("filter-team").value;
-  const userJson = localStorage.getItem("tsv_user_data");
+  const filterSelect = document.getElementById("filter-team");
+  const filterTeam = filterSelect ? filterSelect.value : "ALLE";
+  const user = getAktuellerUser();
 
-  if (!userJson) return;
-  const user = JSON.parse(userJson);
+  if (!user || !listeDiv) return;
 
-  listeDiv.innerHTML = "<p style='color:#666;'>Lade Termine...</p>";
+  listeDiv.innerHTML = "<div class='box' style='text-align:center; color:#64748b;'>Lade Termine...</div>";
 
   try {
-    const url = kalenderDbUrl + "/termine.json?auth=" + user.idToken;
+    const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
     const response = await fetch(url);
-    
+
     if (response.status === 401) {
-      listeDiv.innerHTML = "<p style='color:red;'>Sitzung abgelaufen. Bitte einmal aus- und wieder einloggen.</p>";
+      listeDiv.innerHTML = "<div class='box' style='color:#dc2626;'>Sitzung abgelaufen. Bitte einmal ab- und wieder anmelden.</div>";
       return;
     }
 
     const data = await response.json();
     if (!data) {
-      listeDiv.innerHTML = "<p style='color:#666;'>Aktuell sind noch keine Termine eingetragen.</p>";
+      listeDiv.innerHTML = "<div class='box' style='text-align:center; color:#64748b;'>Aktuell sind noch keine Termine eingetragen.</div>";
       return;
     }
 
-    // Termine in ein Array umwandeln und nach Datum sortieren
+    // Termine in Liste umwandeln und nach Datum + Uhrzeit sortieren
     let termine = Object.keys(data).map(id => ({ id, ...data[id] }));
     termine.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
 
-    // Nach Mannschaft filtern, falls ausgewählt
+    // Mannschaftsfilter anwenden
     if (filterTeam !== "ALLE") {
       termine = termine.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
     }
 
     if (termine.length === 0) {
-      listeDiv.innerHTML = "<p style='color:#666;'>Keine Termine für diese Auswahl gefunden.</p>";
+      listeDiv.innerHTML = "<div class='box' style='text-align:center; color:#64748b;'>Keine Termine für diese Auswahl gefunden.</div>";
       return;
     }
 
-    // Termine als saubere Karten darstellen
     listeDiv.innerHTML = "";
     termine.forEach(termin => {
-      const datumDeutsch = termin.datum.split("-").reverse().join(".");
+      const teile = (termin.datum || "").split("-");
+      const tag = teile[2] || "--";
+      const monatIndex = parseInt(teile[1], 10) - 1;
+      const monatName = MONATE_KURZ[monatIndex] || "---";
+
       const card = document.createElement("div");
-      card.style.cssText = "border: 1px solid #ddd; border-left: 5px solid #039be5; padding: 12px; border-radius: 6px; margin-bottom: 10px; background: #fff;";
+      card.className = "event-card";
 
       let deleteBtnHtml = "";
       if (user.canWrite) {
-        deleteBtnHtml = `<button type="button" onclick="loescheTermin('${termin.id}')" style="background:#e53935; padding:6px 10px; font-size:12px; width:auto; margin-top:8px; margin-bottom:0;">Löschen</button>`;
+        deleteBtnHtml = `<button type="button" class="btn-delete-small" onclick="loescheTermin('${termin.id}')">Termin löschen</button>`;
       }
 
       card.innerHTML = `
-        <div style="font-size:12px; color:#039be5; font-weight:bold;">${termin.mannschaft} • ${datumDeutsch} um ${termin.uhrzeit} Uhr</div>
-        <div style="font-size:16px; font-weight:bold; margin:4px 0;">${termin.titel}</div>
-        ${termin.ort ? `<div style="font-size:13px; color:#555;">📍 Ort: ${termin.ort}</div>` : ""}
-        ${termin.info ? `<div style="font-size:13px; color:#333; margin-top:4px;">${termin.info}</div>` : ""}
-        ${deleteBtnHtml}
+        <div class="date-badge">
+          <div class="day">${tag}</div>
+          <div class="month">${monatName}</div>
+        </div>
+        <div class="event-content">
+          <span class="team-tag">${termin.mannschaft}</span>
+          <h3 class="event-title">${termin.titel}</h3>
+          <div class="event-meta">
+            <span>🕒 ${termin.uhrzeit} Uhr</span>
+            ${termin.ort ? `<span>📍 ${termin.ort}</span>` : ""}
+          </div>
+          ${termin.info ? `<div class="event-note">${termin.info}</div>` : ""}
+          ${deleteBtnHtml}
+        </div>
       `;
       listeDiv.appendChild(card);
     });
   } catch (err) {
-    listeDiv.innerHTML = "<p style='color:red;'>Fehler beim Laden der Termine: " + err.message + "</p>";
+    listeDiv.innerHTML = "<div class='box' style='color:#dc2626;'>Fehler beim Laden: " + err.message + "</div>";
   }
 }
 
 // Neuen Termin speichern (nur für Trainer & Admins)
 async function speichereTermin() {
-  const userJson = localStorage.getItem("tsv_user_data");
-  if (!userJson) return;
-  const user = JSON.parse(userJson);
+  const user = getAktuellerUser();
+  if (!user) return;
 
   if (!user.canWrite) {
     alert("Du hast keine Berechtigung, Termine einzutragen.");
@@ -88,27 +111,27 @@ async function speichereTermin() {
   const msg = document.getElementById("termin-msg");
 
   if (!titel || !datum || !uhrzeit || !mannschaft) {
-    msg.style.color = "#d32f2f";
+    msg.style.color = "#dc2626";
     msg.textContent = "Bitte fülle Titel, Datum, Uhrzeit und Mannschaft aus!";
     return;
   }
 
-  msg.style.color = "#333";
+  msg.style.color = "#475569";
   msg.textContent = "Speichere Termin...";
 
   const neuerTermin = {
-    titel,
-    datum,
-    uhrzeit,
-    mannschaft,
-    ort,
-    info,
+    titel: titel,
+    datum: datum,
+    uhrzeit: uhrzeit,
+    mannschaft: mannschaft,
+    ort: ort,
+    info: info,
     erstelltVon: user.email,
     erstelltAm: new Date().toISOString()
   };
 
   try {
-    const url = kalenderDbUrl + "/termine.json?auth=" + user.idToken;
+    const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,7 +142,7 @@ async function speichereTermin() {
       throw new Error("Speichern fehlgeschlagen (Status " + response.status + ")");
     }
 
-    // Formular leeren und schließen
+    // Eingabefelder zurücksetzen und Formular schließen
     document.getElementById("termin-titel").value = "";
     document.getElementById("termin-datum").value = "";
     document.getElementById("termin-uhrzeit").value = "";
@@ -130,7 +153,7 @@ async function speichereTermin() {
 
     ladeTermine();
   } catch (err) {
-    msg.style.color = "#d32f2f";
+    msg.style.color = "#dc2626";
     msg.textContent = "Fehler: " + err.message;
   }
 }
@@ -139,12 +162,11 @@ async function speichereTermin() {
 async function loescheTermin(id) {
   if (!confirm("Diesen Termin wirklich löschen?")) return;
 
-  const userJson = localStorage.getItem("tsv_user_data");
-  if (!userJson) return;
-  const user = JSON.parse(userJson);
+  const user = getAktuellerUser();
+  if (!user) return;
 
   try {
-    const url = kalenderDbUrl + "/termine/" + id + ".json?auth=" + user.idToken;
+    const url = kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken;
     await fetch(url, { method: "DELETE" });
     ladeTermine();
   } catch (err) {
@@ -152,7 +174,7 @@ async function loescheTermin(id) {
   }
 }
 
-// Event-Listener für Kalender-Buttons
+// Buttons und Filter verbinden, sobald die Seite geladen ist
 document.addEventListener("DOMContentLoaded", () => {
   const toggleBtn = document.getElementById("toggle-termin-form");
   if (toggleBtn) {
@@ -171,4 +193,3 @@ document.addEventListener("DOMContentLoaded", () => {
     filterSelect.addEventListener("change", ladeTermine);
   }
 });
-
