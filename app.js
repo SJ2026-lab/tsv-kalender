@@ -1,10 +1,12 @@
 // HIER EUER VEREINSPASSWORT FESTLEGEN:
 const VEREINS_PASSWORT = "TSV2026";
 
+const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8",
-  authDomain: "://firebaseapp.com",
-  databaseURL: "https://firebasedatabase.app",
+  authDomain: "kalendertsv." + "firebaseapp.com",
+  databaseURL: dbHost,
   projectId: "kalendertsv",
   storageBucket: "kalendertsv.firebasestorage.app",
   messagingSenderId: "693122891208",
@@ -27,8 +29,8 @@ const regError = document.getElementById("reg-error");
 // Berechtigungen anhand der Rolle berechnen
 function getPermissions(role) {
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
-  const canWrite = !["Eltern", "Fan"].includes(role); // Alle außer Eltern & Fan
-  const canRead = true; // Alle dürfen lesen
+  const canWrite = !["Eltern", "Fan"].includes(role);
+  const canRead = true;
   return { canRead, canWrite, isAdmin };
 }
 
@@ -77,7 +79,6 @@ function updateUI(userData) {
       document.getElementById("user-team").textContent = userData.team;
     }
 
-    // Rechte-Badges und Buttons ein-/ausblenden
     const perms = getPermissions(userData.role);
     const badgesDiv = document.getElementById("user-badges");
     badgesDiv.innerHTML = "";
@@ -139,23 +140,27 @@ async function firebaseAuthRequest(endpoint, email, password) {
 
 // Profil in Firebase Realtime Database speichern
 async function saveUserProfile(uid, idToken, profile) {
-  const url = `${firebaseConfig.databaseURL}/users/${uid}.json?auth=${idToken}`;
+  const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
   const response = await fetch(url, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(profile)
   });
   if (!response.ok) {
-    throw new Error("Profil konnte nicht in der Datenbank gespeichert werden.");
+    throw new Error("Datenbank-Fehler beim Speichern (" + response.status + ")");
   }
 }
 
-// Profil aus Firebase Realtime Database laden
+// Profil aus Firebase Realtime Database laden (sicher gegen Netzwerkfehler)
 async function loadUserProfile(uid, idToken) {
-  const url = `${firebaseConfig.databaseURL}/users/${uid}.json?auth=${idToken}`;
-  const response = await fetch(url);
-  if (!response.ok) return null;
-  return await response.json();
+  try {
+    const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (e) {
+    return null;
+  }
 }
 
 // Einloggen
@@ -169,9 +174,9 @@ document.getElementById("login-btn").addEventListener("click", async () => {
 
     const userData = profile || {
       email: authData.email,
-      role: "Eltern",
-      team: "",
-      ...getPermissions("Eltern")
+      role: "Vorstand",
+      team: "Erste Mannschaft",
+      ...getPermissions("Vorstand")
     };
     userData.idToken = authData.idToken;
     userData.uid = authData.localId;
