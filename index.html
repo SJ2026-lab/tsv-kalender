@@ -5,69 +5,121 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TSV Kalender – Login</title>
   <style>
-    body { 
-      font-family: sans-serif; 
-      max-width: 400px; 
-      margin: 50px auto; 
-      padding: 20px; 
-      background-color: #f9f9f9;
-    }
-    .box {
-      background: white;
-      padding: 25px;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    input, button { 
-      display: block; 
-      width: 100%; 
-      margin-bottom: 12px; 
-      padding: 12px; 
-      box-sizing: border-box; 
-      font-size: 16px;
-    }
-    input {
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button { 
-      cursor: pointer; 
-      background-color: #039be5; 
-      color: white; 
-      border: none; 
-      border-radius: 4px; 
-      font-weight: bold;
-    }
+    body { font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background-color: #f9f9f9; }
+    .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    input, button { display: block; width: 100%; margin-bottom: 12px; padding: 12px; box-sizing: border-box; font-size: 16px; }
+    input { border: 1px solid #ccc; border-radius: 4px; }
+    button { cursor: pointer; background-color: #039be5; color: white; border: none; border-radius: 4px; font-weight: bold; }
     button:hover { background-color: #0288d1; }
     .hidden { display: none; }
-    #error-msg { color: #d32f2f; margin-top: 10px; font-size: 14px; }
+    #error-msg { color: #d32f2f; margin-top: 10px; font-size: 14px; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <!-- 1. Login & Registrierung Bereich -->
   <div id="auth-section" class="box">
     <h2>TSV Kalender Login</h2>
     <input type="email" id="email" placeholder="E-Mail-Adresse" required>
     <input type="password" id="password" placeholder="Passwort (min. 6 Zeichen)" required>
-    <button id="login-btn">Einloggen</button>
-    <button id="register-btn" style="background-color: #43a047;">Neues Konto erstellen</button>
+    <button type="button" id="login-btn">Einloggen</button>
+    <button type="button" id="register-btn" style="background-color: #43a047;">Neues Konto erstellen</button>
     <p id="error-msg"></p>
   </div>
 
-  <!-- 2. Eingeloggter Bereich (Hier kommt später dein Kalender rein) -->
   <div id="user-section" class="box hidden">
     <h2>Willkommen im TSV-Kalender!</h2>
     <p>Eingeloggt als: <strong id="user-email"></strong></p>
-    
-    <!-- HIER KANNST DU SPÄTER DEINEN KALENDER EINFÜGEN -->
     <p>Du bist erfolgreich angemeldet.</p>
-
-    <button id="logout-btn" style="background-color: #e53935;">Ausloggen</button>
+    <button type="button" id="logout-btn" style="background-color: #e53935;">Ausloggen</button>
   </div>
 
-  <!-- Verbindung zu deiner app.js -->
-  <script type="module" src="app.js"></script>
+  <script type="module">
+    const errorMsg = document.getElementById("error-msg");
+
+    try {
+      const { initializeApp } = await import("https://gstatic.com");
+      const { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        signInWithEmailAndPassword, 
+        signOut, 
+        onAuthStateChanged 
+      } = await import("https://gstatic.com");
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8",
+        authDomain: "://firebaseapp.com",
+        databaseURL: "https://firebasedatabase.app",
+        projectId: "kalendertsv",
+        storageBucket: "kalendertsv.firebasestorage.app",
+        messagingSenderId: "693122891208",
+        appId: "1:693122891208:web:01cdd76b4ec0d3995894fd",
+        measurementId: "G-S138SYNHFL"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+
+      const authSection = document.getElementById("auth-section");
+      const userSection = document.getElementById("user-section");
+      const emailInput = document.getElementById("email");
+      const passwordInput = document.getElementById("password");
+      const userEmailSpan = document.getElementById("user-email");
+
+      function showError(code) {
+        const messages = {
+          "auth/invalid-email": "Bitte gib eine gültige E-Mail-Adresse ein.",
+          "auth/user-not-found": "Kein Konto mit dieser E-Mail gefunden.",
+          "auth/wrong-password": "Das Passwort ist falsch.",
+          "auth/invalid-credential": "E-Mail oder Passwort ist falsch.",
+          "auth/email-already-in-use": "Diese E-Mail wird bereits verwendet.",
+          "auth/weak-password": "Das Passwort muss mindestens 6 Zeichen lang sein.",
+          "auth/operation-not-allowed": "E-Mail/Passwort-Login ist in Firebase noch nicht aktiviert."
+        };
+        errorMsg.textContent = messages[code] || "Fehler: " + code;
+      }
+
+      document.getElementById("register-btn").addEventListener("click", async () => {
+        errorMsg.textContent = "Registriere...";
+        try {
+          await createUserWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
+          errorMsg.textContent = "";
+        } catch (error) {
+          showError(error.code);
+        }
+      });
+
+      document.getElementById("login-btn").addEventListener("click", async () => {
+        errorMsg.textContent = "Logge ein...";
+        try {
+          await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
+          errorMsg.textContent = "";
+        } catch (error) {
+          showError(error.code);
+        }
+      });
+
+      document.getElementById("logout-btn").addEventListener("click", async () => {
+        await signOut(auth);
+      });
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          authSection.classList.add("hidden");
+          userSection.classList.remove("hidden");
+          userEmailSpan.textContent = user.email;
+          emailInput.value = "";
+          passwordInput.value = "";
+        } else {
+          authSection.classList.remove("hidden");
+          userSection.classList.add("hidden");
+          userEmailSpan.textContent = "";
+        }
+      });
+    } catch (err) {
+      errorMsg.textContent = "Ladefehler: " + err.message;
+    }
+  </script>
 </body>
 </html>
 
