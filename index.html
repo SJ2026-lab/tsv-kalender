@@ -2,171 +2,392 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TSV Kalender</title>
   <style>
-    body { font-family: sans-serif; max-width: 500px; margin: 20px auto; padding: 15px; background-color: #f4f6f8; }
-    .box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
-    input, select, textarea, button { display: block; width: 100%; margin-bottom: 12px; padding: 11px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
-    input, select, textarea { border: 1px solid #ccc; border-radius: 4px; background-color: white; }
-    label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; color: #333; }
-    button { cursor: pointer; background-color: #039be5; color: white; border: none; border-radius: 4px; font-weight: bold; }
-    button:hover { background-color: #0288d1; }
-    .btn-secondary { background-color: #607d8b; }
-    .btn-success { background-color: #43a047; }
-    .hidden { display: none; }
-    .info-text { font-size: 13px; color: #555; margin-bottom: 14px; }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; margin-right: 5px; }
-    .badge-admin { background-color: #d32f2f; }
-    .badge-write { background-color: #f57c00; }
-    .badge-read { background-color: #388e3c; }
-    .profile-card { background: #f1f8e9; border: 1px solid #c5e1a5; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; }
-    .form-panel { background: #f9f9f9; border: 1px solid #ddd; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
+    :root {
+      --primary: #0f172a;       /* Tiefes Sport-Dunkelblau */
+      --accent: #10b981;        /* Frisches Rasen-Grün */
+      --accent-hover: #059669;
+      --blue: #2563eb;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      line-height: 1.5;
+    }
+
+    /* App-Container */
+    .app-wrapper {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 16px;
+      padding-bottom: 50px;
+    }
+
+    /* Sportlicher Top-Banner */
+    .top-banner {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      color: white;
+      padding: 24px 20px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .club-crest {
+      width: 46px;
+      height: 46px;
+      background: var(--accent);
+      color: #064e3b;
+      font-weight: 900;
+      font-size: 16px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .brand p {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* Moderne Karten */
+    .box {
+      background: var(--card);
+      padding: 24px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 18px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input, select, textarea {
+      display: block;
+      width: 100%;
+      margin-bottom: 16px;
+      padding: 13px 14px;
+      font-size: 16px;
+      font-family: inherit;
+      color: var(--text);
+      background-color: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--blue);
+      background-color: #ffffff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    /* Moderne Buttons */
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      background-color: var(--primary);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.1s ease, background-color 0.2s ease;
+    }
+
+    button:active { transform: scale(0.98); }
+
+    .btn-success {
+      background-color: var(--accent);
+      color: #064e3b;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+    }
+    .btn-success:hover { background-color: var(--accent-hover); color: white; }
+
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+    }
+    .btn-secondary:hover { background-color: #cbd5e1; }
+
+    .btn-logout {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      width: auto;
+      padding: 8px 14px;
+      margin: 0;
+      font-size: 13px;
+      border-radius: 10px;
+      backdrop-filter: blur(4px);
+    }
+    .btn-logout:hover { background: rgba(239, 68, 68, 0.85); }
+
+    .hidden { display: none !important; }
+
+    .info-text {
+      font-size: 14px;
+      color: var(--muted);
+      margin-top: -8px;
+      margin-bottom: 18px;
+    }
+
+    /* Profil-Leiste im Dashboard */
+    .profile-pill-bar {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-info {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .badge-admin { background-color: #fee2e2; color: #b91c1c; }
+    .badge-write { background-color: #fef3c7; color: #b45309; }
+    .badge-read { background-color: #dcfce7; color: #15803d; }
+
+    /* Formular-Panel für neue Termine */
+    .form-panel {
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      padding: 18px;
+      border-radius: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* Filter-Box */
+    .filter-bar {
+      background: var(--card);
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .filter-bar select { margin-bottom: 0; }
+
+    /* Termin-Karten im modernen Sport-App-Look */
+    .event-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .date-badge {
+      background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+      color: white;
+      min-width: 56px;
+      border-radius: 12px;
+      text-align: center;
+      padding: 8px 4px;
+      flex-shrink: 0;
+    }
+
+    .date-badge .day {
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+
+    .date-badge .month {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #93c5fd;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .event-content { flex: 1; min-width: 0; }
+
+    .team-tag {
+      display: inline-block;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      margin-bottom: 5px;
+    }
+
+    .event-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 4px 0;
+    }
+
+    .event-meta {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .event-note {
+      font-size: 13px;
+      color: #475569;
+      background: #f8fafc;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-delete-small {
+      background: #fee2e2;
+      color: #dc2626;
+      width: auto;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    .btn-delete-small:hover { background: #ef4444; color: white; }
   </style>
 </head>
 <body>
 
-  <!-- 1. Standard-Login -->
-  <div id="login-box" class="box">
-    <h2>TSV Kalender Login</h2>
-    <input type="email" id="login-email" placeholder="E-Mail-Adresse" required>
-    <input type="password" id="login-password" placeholder="Dein Passwort" required>
-    <button type="button" id="login-btn">Einloggen</button>
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 18px 0;">
-    <button type="button" id="show-register-btn" class="btn-secondary">Neu im Verein? Konto erstellen</button>
-    <p id="login-error" style="color: #d32f2f; font-size: 14px; font-weight: bold;"></p>
-  </div>
-
-  <!-- 2. Registrierung -->
-  <div id="register-box" class="box hidden">
-    <h2>Mitglieds-Konto erstellen</h2>
-    <p class="info-text">Bitte gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion im Verein aus.</p>
+  <div class="app-wrapper">
     
-    <label for="club-password">Vereinspasswort</label>
-    <input type="password" id="club-password" placeholder="Vereinspasswort eingeben" required>
-
-    <label for="reg-role">Was bist du im Verein?</label>
-    <select id="reg-role">
-      <option value="">-- Bitte Funktion wählen --</option>
-      <option value="Eltern">Eltern</option>
-      <option value="Trainer">Trainer</option>
-      <option value="Jugendleiter">Jugendleiter</option>
-      <option value="Vorstand">Vorstand</option>
-      <option value="Spartenleiter">Spartenleiter</option>
-      <option value="Fan">Fan</option>
-    </select>
-
-    <div id="team-wrapper">
-      <label for="reg-team">Mannschaft</label>
-      <select id="reg-team">
-        <option value="">-- Bitte Mannschaft wählen --</option>
-        <option value="U7">U7</option>
-        <option value="U9">U9</option>
-        <option value="U11">U11</option>
-        <option value="U13">U13</option>
-        <option value="U15">U15</option>
-        <option value="Altherren">Altherren</option>
-        <option value="Damen">Damen</option>
-        <option value="Erste Mannschaft">Erste Mannschaft</option>
-        <option value="2. Mannschaft">2. Mannschaft</option>
-      </select>
-    </div>
-
-    <label for="reg-email">Deine E-Mail-Adresse</label>
-    <input type="email" id="reg-email" placeholder="name@beispiel.de" required>
-
-    <label for="reg-password">Dein eigenes Passwort</label>
-    <input type="password" id="reg-password" placeholder="Mindestens 6 Zeichen" required>
-
-    <button type="button" id="register-btn" class="btn-success">Jetzt registrieren</button>
-    <button type="button" id="back-to-login-btn" class="btn-secondary">Zurück zum Login</button>
-    <p id="reg-error" style="color: #d32f2f; font-size: 14px; font-weight: bold;"></p>
-  </div>
-
-  <!-- 3. Eingeloggter Bereich (TSV-Kalender) -->
-  <div id="user-section" class="box hidden">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-      <h2 style="margin:0;">TSV-Kalender</h2>
-      <button type="button" id="logout-btn" style="background-color:#e53935; width:auto; padding:8px 12px; margin:0; font-size:13px;">Ausloggen</button>
-    </div>
-
-    <div class="profile-card">
-      <div><strong>Angemeldet:</strong> <span id="user-email"></span> (<span id="user-role"></span>)</div>
-      <div id="user-team-row"><strong>Mannschaft:</strong> <span id="user-team"></span></div>
-      <div style="margin-top: 6px;" id="user-badges"></div>
-    </div>
-
-    <!-- Schreibbereich (nur für Trainer & Admins) -->
-    <div id="write-area" class="hidden">
-      <button type="button" id="toggle-termin-form" class="btn-success">+ Neuen Termin eintragen</button>
-      
-      <div id="termin-formular" class="form-panel hidden">
-        <h3 style="margin-top:0;">Neuer Termin</h3>
-        <label for="termin-titel">Was findet statt? (z. B. Training, Heimspiel)</label>
-        <input type="text" id="termin-titel" placeholder="Titel des Termins">
-
-        <label for="termin-team">Für welche Mannschaft?</label>
-        <select id="termin-team">
-          <option value="Alle Mannschaften">Alle Mannschaften (Gesamtverein)</option>
-          <option value="U7">U7</option>
-          <option value="U9">U9</option>
-          <option value="U11">U11</option>
-          <option value="U13">U13</option>
-          <option value="U15">U15</option>
-          <option value="Altherren">Altherren</option>
-          <option value="Damen">Damen</option>
-          <option value="Erste Mannschaft">Erste Mannschaft</option>
-          <option value="2. Mannschaft">2. Mannschaft</option>
-        </select>
-
-        <div style="display:flex; gap:10px;">
-          <div style="flex:1;">
-            <label for="termin-datum">Datum</label>
-            <input type="date" id="termin-datum">
-          </div>
-          <div style="flex:1;">
-            <label for="termin-uhrzeit">Uhrzeit</label>
-            <input type="time" id="termin-uhrzeit">
+    <!-- 1. Login-Ansicht -->
+    <div id="login-box">
+      <div class="top-banner">
+        <div class="brand">
+          <div class="club-crest">TSV</div>
+          <div>
+            <h1>TSV Kalender</h1>
+            <p>Vereins- & Mannschaftstermine</p>
           </div>
         </div>
+      </div>
 
-        <label for="termin-ort">Ort / Sportplatz (optional)</label>
-        <input type="text" id="termin-ort" placeholder="z. B. Hauptplatz, Sporthalle">
-
-        <label for="termin-info">Zusatzinfos (optional)</label>
-        <textarea id="termin-info" rows="2" placeholder="z. B. Treffpunkt 30 Min. vorher"></textarea>
-
-        <button type="button" id="save-termin-btn" class="btn-success">Termin speichern</button>
-        <p id="termin-msg" style="font-size:13px; font-weight:bold; margin:0;"></p>
+      <div class="box">
+        <h2>Willkommen zurück</h2>
+        <label for="login-email">E-Mail-Adresse</label>
+        <input type="email" id="login-email" placeholder="deine@email.de" required>
+        
+        <label for="login-password">Passwort</label>
+        <input type="password" id="login-password" placeholder="••••••••" required>
+        
+        <button type="button" id="login-btn">Anmelden</button>
+        <button type="button" id="show-register-btn" class="btn-secondary">Neu im Verein? Konto erstellen</button>
+        <p id="login-error" style="color: var(--danger); font-size: 14px; font-weight: 600; margin: 0;"></p>
       </div>
     </div>
 
-    <!-- Admin-Button (nur für Jugendleiter, Vorstand, Spartenleiter) -->
-    <div id="admin-area" class="hidden" style="margin-bottom: 15px;">
-      <button type="button" id="open-admin-btn" style="background-color: #6a1b9a;">Admin-Bereich (Mitglieder verwalten)</button>
-    </div>
+    <!-- 2. Registrierungs-Ansicht -->
+    <div id="register-box" class="hidden">
+      <div class="top-banner">
+        <div class="brand">
+          <div class="club-crest">TSV</div>
+          <div>
+            <h1>Mitglied werden</h1>
+            <p>Einmalige Registrierung</p>
+          </div>
+        </div>
+      </div>
 
-    <!-- Filter für alle Nutzer -->
-    <label for="filter-team">Termine filtern nach Mannschaft:</label>
-    <select id="filter-team">
-      <option value="ALLE">Alle Termine anzeigen</option>
-      <option value="U7">U7</option>
-      <option value="U9">U9</option>
-      <option value="U11">U11</option>
-      <option value="U13">U13</option>
-      <option value="U15">U15</option>
-      <option value="Altherren">Altherren</option>
-      <option value="Damen">Damen</option>
-      <option value="Erste Mannschaft">Erste Mannschaft</option>
-      <option value="2. Mannschaft">2. Mannschaft</option>
-    </select>
+      <div class="box">
+        <h2>Konto erstellen</h2>
+        <p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion aus.</p>
+        
+        <label for="club-password">Vereinspasswort</label>
+        <input type="password" id="club-password" placeholder="Vereinspasswort eingeben" required>
 
-    <!-- Hier erscheinen die Termine -->
-    <div id="termine-liste" style="margin-top: 15px;"></div>
-  </div>
+        <label for="reg-role">Funktion im Verein</label>
+        <select id="reg-role">
+          <option value="">Bitte wählen...</option>
+          <option value="Eltern">Eltern</option>
+          <option value="Trainer">Trainer</option>
+          <option value="Jugendleiter">Jugendleiter</option>
+          <option value="Vorstand">Vorstand</option>
+          <option value="Spartenleiter">Spartenleiter</option>
+          <option value="Fan">Fan</option>
+        </select>
 
-  <!-- Beide Skripte einbinden -->
-  <script src="kalender.js?v=1"></script>
-  <script src="app.js?v=10"></script>
-</body>
-</html>
+        <div id="team-wrapper">
+          <label for="reg-team">Mannschaft</label>
+          <select id="reg-team">
+            <option value="">Bitte Mannschaft wählen...</option>
+            <option value="U7">U7</option>
+            <option value="U9">U9</option>
