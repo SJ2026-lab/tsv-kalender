@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TSV Kalender – Login</title>
+  
+  <!-- Klassische Firebase Skripte (kein CORS-Fehler in Safari) -->
+  <script src="https://gstatic.com"></script>
+  <script src="https://gstatic.com"></script>
+
   <style>
     body { font-family: sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background-color: #f9f9f9; }
     .box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -33,19 +38,10 @@
     <button type="button" id="logout-btn" style="background-color: #e53935;">Ausloggen</button>
   </div>
 
-  <script type="module">
+  <script>
     const errorMsg = document.getElementById("error-msg");
 
     try {
-      const { initializeApp } = await import("https://gstatic.com");
-      const { 
-        getAuth, 
-        createUserWithEmailAndPassword, 
-        signInWithEmailAndPassword, 
-        signOut, 
-        onAuthStateChanged 
-      } = await import("https://gstatic.com");
-
       const firebaseConfig = {
         apiKey: "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8",
         authDomain: "://firebaseapp.com",
@@ -57,8 +53,8 @@
         measurementId: "G-S138SYNHFL"
       };
 
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
 
       const authSection = document.getElementById("auth-section");
       const userSection = document.getElementById("user-section");
@@ -74,36 +70,31 @@
           "auth/invalid-credential": "E-Mail oder Passwort ist falsch.",
           "auth/email-already-in-use": "Diese E-Mail wird bereits verwendet.",
           "auth/weak-password": "Das Passwort muss mindestens 6 Zeichen lang sein.",
-          "auth/operation-not-allowed": "E-Mail/Passwort-Login ist in Firebase noch nicht aktiviert."
+          "auth/operation-not-allowed": "E-Mail/Passwort-Login ist in Firebase noch nicht aktiviert.",
+          "auth/unauthorized-domain": "Diese Domain ist in Firebase noch nicht freigeschaltet."
         };
         errorMsg.textContent = messages[code] || "Fehler: " + code;
       }
 
-      document.getElementById("register-btn").addEventListener("click", async () => {
+      document.getElementById("register-btn").addEventListener("click", () => {
         errorMsg.textContent = "Registriere...";
-        try {
-          await createUserWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
-          errorMsg.textContent = "";
-        } catch (error) {
-          showError(error.code);
-        }
+        auth.createUserWithEmailAndPassword(emailInput.value.trim(), passwordInput.value)
+          .then(() => { errorMsg.textContent = ""; })
+          .catch((error) => { showError(error.code); });
       });
 
-      document.getElementById("login-btn").addEventListener("click", async () => {
+      document.getElementById("login-btn").addEventListener("click", () => {
         errorMsg.textContent = "Logge ein...";
-        try {
-          await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
-          errorMsg.textContent = "";
-        } catch (error) {
-          showError(error.code);
-        }
+        auth.signInWithEmailAndPassword(emailInput.value.trim(), passwordInput.value)
+          .then(() => { errorMsg.textContent = ""; })
+          .catch((error) => { showError(error.code); });
       });
 
-      document.getElementById("logout-btn").addEventListener("click", async () => {
-        await signOut(auth);
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        auth.signOut();
       });
 
-      onAuthStateChanged(auth, (user) => {
+      auth.onAuthStateChanged((user) => {
         if (user) {
           authSection.classList.add("hidden");
           userSection.classList.remove("hidden");
@@ -117,9 +108,8 @@
         }
       });
     } catch (err) {
-      errorMsg.textContent = "Ladefehler: " + err.message;
+      errorMsg.textContent = "Startfehler: " + err.message;
     }
   </script>
 </body>
 </html>
-
