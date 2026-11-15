@@ -14,14 +14,23 @@ async function ladeTermine(stillesUpdate = false) {
   const user = getAktuellerUser();
   if (!user || !listeDiv) return;
 
-  if (!stillesUpdate && typeof renderKalenderAnsicht === "function") {
-    renderKalenderAnsicht();
+  if (!stillesUpdate) {
+    if (typeof renderKalenderAnsicht === "function") {
+      renderKalenderAnsicht();
+    } else {
+      listeDiv.innerHTML = "<div class='box' style='color:#dc2626;'>Fehler: ansichten.js konnte nicht geladen werden.</div>";
+      return;
+    }
   }
 
   try {
     const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
     const response = await fetch(url);
-    if (response.status === 401) return;
+
+    if (response.status === 401) {
+      listeDiv.insertAdjacentHTML("afterbegin", "<div class='box' style='color:#dc2626;margin-bottom:12px;'>Sitzung abgelaufen – bitte einmal oben auf <strong>Abmelden</strong> tippen und neu anmelden.</div>");
+      return;
+    }
 
     const data = await response.json();
     const neuerStand = JSON.stringify(data || {});
@@ -50,6 +59,12 @@ function starteLiveSync(user) {
 setInterval(() => {
   if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
 }, 10000);
+
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "filter-team" && typeof renderKalenderAnsicht === "function") {
+    renderKalenderAnsicht();
+  }
+});
 
 async function speichereTermin() {
   const user = getAktuellerUser();
