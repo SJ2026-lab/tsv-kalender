@@ -11,6 +11,14 @@ function el(tag, props) {
   return node;
 }
 
+function feld(art, idName, hinweis) {
+  const f = document.createElement("input");
+  f.setAttribute("type", art);
+  if (idName) f.id = idName;
+  if (hinweis) f.placeholder = hinweis;
+  return f;
+}
+
 function getPermissions(role) {
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
   const canWrite = !["Eltern", "Fan"].includes(role);
@@ -42,7 +50,6 @@ async function firebaseAuthRequest(endpoint, email, password) {
   return data;
 }
 
-// Token automatisch im Hintergrund erneuern (verhindert Status 401)
 async function refreshSessionToken(user) {
   if (!user || !user.refreshToken) return user;
   try {
@@ -90,8 +97,8 @@ function renderLogin() {
   const box = el("div", { className: "box" });
   box.innerHTML = "<h2>Willkommen zurück</h2>";
 
-  const emailIn = el("input", { type: "email", placeholder: "E-Mail-Adresse" });
-  const passIn = el("input", { type: "password", placeholder: "Passwort" });
+  const emailIn = feld("email", "", "E-Mail-Adresse");
+  const passIn = feld("password", "", "Passwort");
   const loginBtn = el("button", { type: "button", textContent: "Anmelden" });
   const toRegBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Neu im Verein? Konto erstellen" });
   const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
@@ -129,7 +136,7 @@ function renderRegister() {
   const box = el("div", { className: "box" });
   box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
-  const clubIn = el("input", { type: "password", placeholder: "Vereinspasswort" });
+  const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
   roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
 
@@ -140,8 +147,8 @@ function renderRegister() {
     teamSel.style.display = roleSel.value === "Fan" ? "none" : "block";
   };
 
-  const emailIn = el("input", { type: "email", placeholder: "Deine E-Mail-Adresse" });
-  const passIn = el("input", { type: "password", placeholder: "Eigenes Passwort (min. 6 Zeichen)" });
+  const emailIn = feld("email", "", "Deine E-Mail-Adresse");
+  const passIn = feld("password", "", "Eigenes Passwort (min. 6 Zeichen)");
   const regBtn = el("button", { type: "button", className: "btn-success", textContent: "Registrierung abschließen" });
   const backBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Zurück zum Login" });
   const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
@@ -196,16 +203,16 @@ function renderDashboard(user) {
     const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
     const formPanel = el("div", { className: "form-panel hidden" });
 
-    const titelIn = el("input", { type: "text", id: "termin-titel", placeholder: "Titel (z. B. Heimspiel oder Training)" });
+    const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
     const teamSel = el("select", { id: "termin-team" });
     teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-    const datumIn = el("input", { type: "date", id: "termin-datum" });
-    const zeitIn = el("input", { type: "time", id: "termin-uhrzeit" });
-    const ortIn = el("input", { type: "text", id: "termin-ort", placeholder: "Ort / Sportplatz (optional)" });
+    const datumIn = feld("date", "termin-datum", "");
+    const zeitIn = feld("time", "termin-uhrzeit", "");
+    const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
     const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
     const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
     const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
 
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
+    toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
 
-  
