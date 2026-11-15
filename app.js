@@ -58,11 +58,11 @@ function renderLogin() {
 
   const banner = document.createElement("div");
   banner.className = "top-banner";
-  banner.innerHTML = `<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>`;
+  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
 
   const box = document.createElement("div");
   box.className = "box";
-  box.innerHTML = `<h2>Willkommen zurück</h2>`;
+  box.innerHTML = "<h2>Willkommen zurück</h2>";
 
   const emailIn = Object.assign(document.createElement("input"), { type: "email", placeholder: "E-Mail-Adresse" });
   const passIn = Object.assign(document.createElement("input"), { type: "password", placeholder: "Passwort" });
@@ -95,19 +95,19 @@ function renderRegister() {
 
   const banner = document.createElement("div");
   banner.className = "top-banner";
-  banner.innerHTML = `<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>`;
+  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
 
   const box = document.createElement("div");
   box.className = "box";
-  box.innerHTML = `<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>`;
+  box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
   const clubIn = Object.assign(document.createElement("input"), { type: "password", placeholder: "Vereinspasswort" });
   
   const roleSel = document.createElement("select");
-  roleSel.innerHTML = `<option value="">-- Funktion wählen --</option>` + ROLLEN.map(r => `<option value="${r}">${r}</option>`).join("");
+  roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
 
   const teamSel = document.createElement("select");
-  teamSel.innerHTML = `<option value="">-- Mannschaft wählen --</option>` + MANNSCHAFTEN.map(m => `<option value="${m}">${m}</option>`).join("");
+  teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
 
   roleSel.onchange = () => {
     teamSel.style.display = roleSel.value === "Fan" ? "none" : "block";
@@ -153,7 +153,7 @@ function renderDashboard(user) {
 
   const banner = document.createElement("div");
   banner.className = "top-banner";
-  banner.innerHTML = `<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p style="color:#cbd5e1;">${user.email}</p></div></div>`;
+  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p style="color:#cbd5e1;">' + user.email + '</p></div></div>';
   const logoutBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-logout", textContent: "Abmelden" });
   logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
   banner.appendChild(logoutBtn);
@@ -161,9 +161,9 @@ function renderDashboard(user) {
   const perms = getPermissions(user.role);
   const pill = document.createElement("div");
   pill.className = "profile-pill-bar";
-  const badges = (perms.isAdmin ? `<span class="badge badge-admin">Admin</span> ` : "") +
-                 (perms.canWrite ? `<span class="badge badge-write">Lesen & Schreiben</span>` : `<span class="badge badge-read">Nur Lesen</span>`);
-  pill.innerHTML = `<div style="font-size:13px;"><strong>${user.role}</strong>${user.team ? " • " + user.team : ""}</div><div>${badges}</div>`;
+  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
+                 (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
+  pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
 
   app.append(banner, pill);
 
@@ -171,27 +171,18 @@ function renderDashboard(user) {
     const toggleBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
     const formPanel = document.createElement("div");
     formPanel.className = "form-panel hidden";
-    formPanel.innerHTML = `
-      <h3 style="margin:0 0 12px;font-size:17px;">Neuen Termin anlegen</h3>
-      <label>Veranstaltung / Titel</label>
-      <input type="text" id="termin-titel" placeholder="z. B. Heimspiel oder Training">
-      <label>Mannschaft</label>
-      <select id="termin-team"><option value="Alle Mannschaften">Alle Mannschaften</option>${MANNSCHAFTEN.map(m => `<option value="${m}">${m}</option>`).join("")}</select>
-      <div style="display:flex;gap:10px;">
-        <div style="flex:1;"><label>Datum</label><input type="date" id="termin-datum"></div>
-        <div style="flex:1;"><label>Uhrzeit</label><input type="time" id="termin-uhrzeit"></div>
-      </div>
-      <label>Ort / Sportplatz (optional)</label>
-      <input type="text" id="termin-ort" placeholder="z. B. Hauptplatz">
-      <label>Zusatzinfos (optional)</label>
-      <textarea id="termin-info" rows="2" placeholder="Treffpunkt, Trikots usw."></textarea>
-    `;
+
+    const titelIn = Object.assign(document.createElement("input"), { type: "text", id: "termin-titel", placeholder: "Titel (z. B. Heimspiel oder Training)" });
+    const teamSel = Object.assign(document.createElement("select"), { id: "termin-team" });
+    teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+    const datumIn = Object.assign(document.createElement("input"), { type: "date", id: "termin-datum" });
+    const zeitIn = Object.assign(document.createElement("input"), { type: "time", id: "termin-uhrzeit" });
+    const ortIn = Object.assign(document.createElement("input"), { type: "text", id: "termin-ort", placeholder: "Ort / Sportplatz (optional)" });
+    const infoIn = Object.assign(document.createElement("textarea"), { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
     const saveBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
     const msgP = Object.assign(document.createElement("p"), { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
+
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
     toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
 
-    formPanel.append(saveBtn, msgP);
-    app.append(toggleBtn, formPanel);
-  }
-
+    formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
