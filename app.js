@@ -14,7 +14,6 @@ const firebaseConfig = {
   measurementId: "G-S138SYNHFL"
 };
 
-// Bereiche & Formulare
 const loginBox = document.getElementById("login-box");
 const registerBox = document.getElementById("register-box");
 const userSection = document.getElementById("user-section");
@@ -22,11 +21,9 @@ const roleSelect = document.getElementById("reg-role");
 const teamWrapper = document.getElementById("team-wrapper");
 const teamSelect = document.getElementById("reg-team");
 
-// Fehler & User-Anzeige
 const loginError = document.getElementById("login-error");
 const regError = document.getElementById("reg-error");
 
-// Berechtigungen anhand der Rolle berechnen
 function getPermissions(role) {
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
   const canWrite = !["Eltern", "Fan"].includes(role);
@@ -34,7 +31,6 @@ function getPermissions(role) {
   return { canRead, canWrite, isAdmin };
 }
 
-// Mannschafts-Dropdown ausblenden, wenn "Fan" gewählt wird
 roleSelect.addEventListener("change", () => {
   if (roleSelect.value === "Fan") {
     teamWrapper.classList.add("hidden");
@@ -57,7 +53,6 @@ function translateError(msg) {
   return messages[msg] || "Fehler: " + msg;
 }
 
-// UI nach Login/Logout aktualisieren
 function updateUI(userData) {
   loginError.textContent = "";
   regError.textContent = "";
@@ -99,6 +94,10 @@ function updateUI(userData) {
     } else {
       document.getElementById("admin-area").classList.add("hidden");
     }
+
+    if (typeof ladeTermine === "function") {
+      ladeTermine();
+    }
   } else {
     localStorage.removeItem("tsv_user_data");
     loginBox.classList.remove("hidden");
@@ -107,7 +106,6 @@ function updateUI(userData) {
   }
 }
 
-// Masken umschalten
 document.getElementById("show-register-btn").addEventListener("click", () => {
   loginError.textContent = "";
   loginBox.classList.add("hidden");
@@ -120,7 +118,6 @@ document.getElementById("back-to-login-btn").addEventListener("click", () => {
   loginBox.classList.remove("hidden");
 });
 
-// Firebase Auth Anfrage
 async function firebaseAuthRequest(endpoint, email, password) {
   const host = "https://identitytoolkit." + "googleapis.com";
   const path = "/v1/accounts:" + endpoint;
@@ -138,7 +135,6 @@ async function firebaseAuthRequest(endpoint, email, password) {
   return data;
 }
 
-// Profil in Firebase Realtime Database speichern
 async function saveUserProfile(uid, idToken, profile) {
   const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
   const response = await fetch(url, {
@@ -151,7 +147,6 @@ async function saveUserProfile(uid, idToken, profile) {
   }
 }
 
-// Profil aus Firebase Realtime Database laden (sicher gegen Netzwerkfehler)
 async function loadUserProfile(uid, idToken) {
   try {
     const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
@@ -163,7 +158,6 @@ async function loadUserProfile(uid, idToken) {
   }
 }
 
-// Einloggen
 document.getElementById("login-btn").addEventListener("click", async () => {
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
@@ -189,7 +183,6 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   }
 });
 
-// Registrieren
 document.getElementById("register-btn").addEventListener("click", async () => {
   const clubPw = document.getElementById("club-password").value.trim();
   const role = roleSelect.value;
@@ -239,12 +232,10 @@ document.getElementById("register-btn").addEventListener("click", async () => {
   }
 });
 
-// Ausloggen
 document.getElementById("logout-btn").addEventListener("click", () => {
   updateUI(null);
 });
 
-// Gespeicherten Login beim Laden wiederherstellen
 const savedUser = localStorage.getItem("tsv_user_data");
 if (savedUser) {
   try {
@@ -252,8 +243,6 @@ if (savedUser) {
   } catch (e) {
     updateUI(null);
   }
-}     if (typeof ladeTermine === "function") ladeTermine();
-else {
+} else {
   updateUI(null);
 }
-
