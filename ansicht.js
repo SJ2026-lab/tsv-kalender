@@ -160,11 +160,7 @@ function zeigeWoche(container, termine, user) {
       const plus = Object.assign(document.createElement("span"), { textContent: "+ Termin", style: "color:var(--blue);cursor:pointer;font-size:12px;" });
       plus.onclick = () => oeffneTerminFormular(iso);
       row.appendChild(plus);
-    }
-    block.appendChild(row);
-
-    const liste = termine.filter(x => x.datum === iso);
-    if (liste.length === 0) {
+        if (liste.length === 0) {
       block.appendChild(Object.assign(document.createElement("div"), { style: "font-size:13px;color:#94a3b8;", textContent: "Keine Termine" }));
     } else {
       liste.forEach(x => block.appendChild(erstelleKarte(x, user)));
@@ -192,4 +188,3 @@ function erstelleKarte(t, user) {
     </div>`;
   return card;
 }
-
