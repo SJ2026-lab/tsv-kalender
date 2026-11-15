@@ -183,6 +183,8 @@ function renderDashboard(user) {
   if (perms.canWrite) {
     const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
     const formPanel = el("div", { className: "form-panel hidden" });
+    formPanel.id = "termin-formular";
+
     const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
     const teamSel = el("select", { id: "termin-team" });
     teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
