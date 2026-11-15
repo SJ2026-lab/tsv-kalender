@@ -4,11 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TSV Kalender</title>
-  <link rel="stylesheet" href="style.css?v=1">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
-  <div id="app" class="app-wrapper"></div>
-  <script src="kalender.js?v=9"></script>
-  <script src="app.js?v=20"></script>
+  <div id="app" class="app-wrapper">
+    <p style="text-align:center; padding:40px; color:#64748b; font-family:sans-serif;">Lade TSV Kalender...</p>
+  </div>
+
+  <script>
+    window.onerror = function(msg, url, line) {
+      document.getElementById("app").innerHTML = 
+        '<div style="background:#fee2e2;color:#b91c1c;padding:20px;border-radius:12px;font-family:sans-serif;">' +
+        '<strong>Fehler gefunden:</strong><br>' + msg + '<br><small>Datei: ' + url + ' (Zeile ' + line + ')</small></div>';
+    };
+  </script>
+
+  <script src="kalender.js?v=10" onerror="document.getElementById('app').innerHTML='Fehler: kalender.js nicht gefunden!'"></script>
+  <script src="app.js?v=22" onerror="document.getElementById('app').innerHTML='Fehler: app.js nicht gefunden!'"></script>
 </body>
 </html>
