@@ -151,8 +151,10 @@ function renderMonatsAnsicht(container, termine, user) {
 
   const detailBox = document.createElement("div");
   detailBox.className = "box";
-  const teile = ausgewaehltesDatum.split("-");
-  const datumLesbar = teile + "." + teile + "." + teile;
+  const jahrStr = ausgewaehltesDatum.slice(0, 4);
+  const monatStr = ausgewaehltesDatum.slice(5, 7);
+  const tagStr = ausgewaehltesDatum.slice(8, 10);
+  const datumLesbar = tagStr + "." + monatStr + "." + jahrStr;
   const tagesTermine = termine.filter(t => t.datum === ausgewaehltesDatum);
 
   detailBox.innerHTML = `<h3 style="margin:0 0 12px 0; font-size:16px;">Termine am ${datumLesbar}</h3>`;
@@ -162,7 +164,7 @@ function renderMonatsAnsicht(container, termine, user) {
     addDayBtn.type = "button";
     addDayBtn.className = "btn-success";
     addDayBtn.style.marginBottom = "14px";
-    addDayBtn.textContent = "+ Termin am " + teile + "." + teile + ". hinzufügen";
+    addDayBtn.textContent = "+ Termin am " + tagStr + "." + monatStr + ". hinzufügen";
     addDayBtn.onclick = () => oeffneTerminFuerDatum(ausgewaehltesDatum);
     detailBox.appendChild(addDayBtn);
   }
@@ -248,9 +250,9 @@ function renderWochenAnsicht(container, termine, user) {
 }
 
 function baueTerminKarte(termin, user) {
-  const teile = (termin.datum || "").split("-");
-  const tag = teile || "--";
-  const monatIndex = parseInt(teile, 10) - 1;
+  const dStr = termin.datum || "";
+  const tag = dStr.slice(8, 10) || "--";
+  const monatIndex = parseInt(dStr.slice(5, 7), 10) - 1;
   const monatName = MONATE_KURZ[monatIndex] || "---";
 
   const card = document.createElement("div");
@@ -265,7 +267,100 @@ function baueTerminKarte(termin, user) {
     <div class="date-badge">
       <div class="day">${tag}</div>
       <div class="month">${monatName}</div>
-    </div>
-    <div class="event-content">
-      <span class="team-tag">${termin.mannschaft}</span>
-      <h3 class="event-title">${termin.titel}</h3>
+${termin.mannschaft}
+${termin.titel}
+
+🕒 ${termin.uhrzeit} Uhr
+${termin.ort ? <span>📍 ${termin.ort}</span> : ""}
+
+${termin.info ? <div class="event-note">${termin.info}</div> : ""}
+${deleteBtnHtml}
+
+`;
+return card;
+}
+async function ladeTermine(stillesUpdate = false) {
+const listeDiv = document.getElementById("termine-liste");
+const user = getAktuellerUser();
+if (!user || !listeDiv) return;
+if (!stillesUpdate) {
+renderKalenderAnsicht();
+}
+try {
+const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
+const response = await fetch(url);
+if (response.status === 401) {
+listeDiv.insertAdjacentHTML("afterbegin", "Sitzung abgelaufen – bitte einmal oben auf Abmelden tippen und neu anmelden.");
+return;
+}
+const data = await response.json();
+const neuerStand = JSON.stringify(data || {});
+if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
+aktuellerDatenStand = neuerStand;
+alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
+alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
+renderKalenderAnsicht();
+}
+starteLiveSync(user);
+} catch (err) {}
+}
+function starteLiveSync(user) {
+if (liveStream) return;
+try {
+liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
+liveStream.addEventListener("put", () => ladeTermine(true));
+liveStream.addEventListener("patch", () => ladeTermine(true));
+liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
+} catch (e) {}
+}
+setInterval(() => {
+if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
+}, 10000);
+document.addEventListener("change", (e) => {
+if (e.target && e.target.id === "filter-team") {
+renderKalenderAnsicht();
+}
+});
+async function speichereTermin() {
+const user = getAktuellerUser();
+if (!user || !user.canWrite) return;
+const titel = document.getElementById("termin-titel").value.trim();
+const datum = document.getElementById("termin-datum").value;
+const uhrzeit = document.getElementById("termin-uhrzeit").value;
+const mannschaft = document.getElementById("termin-team").value;
+const ort = document.getElementById("termin-ort").value.trim();
+const info = document.getElementById("termin-info").value.trim();
+const msg = document.getElementById("termin-msg");
+if (!titel || !datum || !uhrzeit || !mannschaft) {
+msg.style.color = "#dc2626";
+msg.textContent = "Bitte Titel, Datum, Uhrzeit und Mannschaft ausfüllen!";
+return;
+}
+msg.style.color = "#475569";
+msg.textContent = "Speichere Termin...";
+try {
+const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ titel, datum, uhrzeit, mannschaft, ort, info, erstelltVon: user.email })
+});
+if (!response.ok) throw new Error("Status " + response.status);
+document.getElementById("termin-titel").value = "";
+document.getElementById("termin-ort").value = "";
+document.getElementById("termin-info").value = "";
+document.getElementById("termin-formular").classList.add("hidden");
+msg.textContent = "";
+ausgewaehltesDatum = datum;
+ladeTermine(true);
+} catch (err) {
+msg.style.color = "#dc2626";
+msg.textContent = "Fehler: " + err.message;
+}
+}
+async function loescheTermin(id) {
+if (!confirm("Diesen Termin wirklich löschen?")) return;
+const user = getAktuellerUser();
+if (!user) return;
+await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
+ladeTermine(true);
+}
