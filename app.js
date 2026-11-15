@@ -1,5 +1,5 @@
 const VEREINS_PASSWORT = "TSV2026";
-const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+const dbHost = "https://kalendertsv-default-rtdb" + "." + "europe-west1" + "." + "firebasedatabase.app";
 const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
@@ -30,7 +30,8 @@ function translateError(msg) {
 }
 
 async function firebaseAuthRequest(endpoint, email, password) {
-  const url = "https://identitytoolkit." + "://googleapis.com:" + endpoint + "?key=" + apiKey;
+  const base = "https://identitytoolkit" + "." + "googleapis" + "." + "com";
+  const url = base + "/v1/accounts:" + endpoint + "?key=" + apiKey;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
