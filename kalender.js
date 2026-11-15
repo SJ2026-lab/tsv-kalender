@@ -7,11 +7,10 @@ let alleTermineCache = [];
 let aktuellerDatenStand = "";
 let liveStream = null;
 
-// Aktueller Zustand für Monats- & Wochenansicht
-let aktuelleAnsicht = "MONAT"; // "MONAT" oder "WOCHE"
+let aktuelleAnsicht = "MONAT";
 let ausgewaehltesDatum = heuteIso();
 let ansichtJahr = new Date().getFullYear();
-let ansichtMonat = new Date().getMonth(); // 0-11
+let ansichtMonat = new Date().getMonth();
 let wochenStartDatum = getMontagDerWoche(new Date());
 
 function heuteIso() {
@@ -25,7 +24,7 @@ function dateZuIso(d) {
 
 function getMontagDerWoche(datum) {
   const d = new Date(datum);
-  const tag = d.getDay(); // 0 = So, 1 = Mo
+  const tag = d.getDay();
   const diff = d.getDate() - tag + (tag === 0 ? -6 : 1);
   return new Date(d.setDate(diff));
 }
@@ -36,7 +35,6 @@ function getAktuellerUser() {
   try { return JSON.parse(userJson); } catch (e) { return null; }
 }
 
-// Formular für bestimmtes Datum öffnen
 function oeffneTerminFuerDatum(isoDatum) {
   const form = document.getElementById("termin-formular");
   const datumFeld = document.getElementById("termin-datum");
@@ -47,7 +45,6 @@ function oeffneTerminFuerDatum(isoDatum) {
   }
 }
 
-// Gefilterte Termine zurückgeben
 function getGefilterteTermine() {
   const filterSelect = document.getElementById("filter-team");
   const filterTeam = filterSelect ? filterSelect.value : "ALLE";
@@ -55,7 +52,6 @@ function getGefilterteTermine() {
   return alleTermineCache.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
 }
 
-// Haupt-Render-Funktion für Monats- und Wochenansicht
 function renderKalenderAnsicht() {
   const container = document.getElementById("termine-liste");
   const user = getAktuellerUser();
@@ -64,7 +60,6 @@ function renderKalenderAnsicht() {
   const termine = getGefilterteTermine();
   container.innerHTML = "";
 
-  // 1. Umschalter (Monatsansicht / Wochenübersicht)
   const switchBar = document.createElement("div");
   switchBar.className = "view-switch";
   switchBar.innerHTML = `
@@ -83,13 +78,11 @@ function renderKalenderAnsicht() {
   }
 }
 
-// MONATSANSICHT + TAGESDETAILS DARUNTER
 function renderMonatsAnsicht(container, termine, user) {
   const calBox = document.createElement("div");
   calBox.className = "box";
   calBox.style.marginBottom = "16px";
 
-  // Kopfzeile (< Monat Jahr >)
   const header = document.createElement("div");
   header.className = "cal-header";
   header.innerHTML = `
@@ -99,30 +92,26 @@ function renderMonatsAnsicht(container, termine, user) {
   `;
   calBox.appendChild(header);
 
-  // Wochentage Mo-So
   const weekdays = document.createElement("div");
   weekdays.className = "cal-weekdays";
   weekdays.innerHTML = WOCHENTAGE.map(w => `<div>${w}</div>`).join("");
   calBox.appendChild(weekdays);
 
-  // Tage berechnen
   const grid = document.createElement("div");
   grid.className = "cal-grid";
 
   const ersterTag = new Date(ansichtJahr, ansichtMonat, 1);
-  let startWochentag = ersterTag.getDay(); // 0=So
-  startWochentag = startWochentag === 0 ? 6 : startWochentag - 1; // Mo=0 .. So=6
+  let startWochentag = ersterTag.getDay();
+  startWochentag = startWochentag === 0 ? 6 : startWochentag - 1;
   const tageImMonat = new Date(ansichtJahr, ansichtMonat + 1, 0).getDate();
   const heute = heuteIso();
 
-  // Leere Felder vor dem 1. des Monats
   for (let i = 0; i < startWochentag; i++) {
     const empty = document.createElement("div");
     empty.className = "cal-day empty";
     grid.appendChild(empty);
   }
 
-  // Echte Monatstage
   for (let tag = 1; tag <= tageImMonat; tag++) {
     const iso = ansichtJahr + "-" + String(ansichtMonat + 1).padStart(2, "0") + "-" + String(tag).padStart(2, "0");
     const tagesTermine = termine.filter(t => t.datum === iso);
@@ -160,19 +149,14 @@ function renderMonatsAnsicht(container, termine, user) {
     renderKalenderAnsicht();
   };
 
-  // TAGESDETAILS FÜR DAS ANGEKLICKTE DATUM
   const detailBox = document.createElement("div");
   detailBox.className = "box";
   const teile = ausgewaehltesDatum.split("-");
   const datumLesbar = teile + "." + teile + "." + teile;
   const tagesTermine = termine.filter(t => t.datum === ausgewaehltesDatum);
 
-  let headerHtml = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-    <h3 style="margin:0; font-size:16px;">Termine am ${datumLesbar}</h3>
-  </div>`;
-  detailBox.innerHTML = headerHtml;
+  detailBox.innerHTML = `<h3 style="margin:0 0 12px 0; font-size:16px;">Termine am ${datumLesbar}</h3>`;
 
-  // Button "Termin hinzufügen" für diesen Tag (nur Trainer & Admins)
   if (user.canWrite) {
     const addDayBtn = document.createElement("button");
     addDayBtn.type = "button";
@@ -194,7 +178,6 @@ function renderMonatsAnsicht(container, termine, user) {
   container.appendChild(detailBox);
 }
 
-// WOCHENÜBERSICHT (Mo - So)
 function renderWochenAnsicht(container, termine, user) {
   const weekBox = document.createElement("div");
   weekBox.className = "box";
@@ -264,96 +247,25 @@ function renderWochenAnsicht(container, termine, user) {
   };
 }
 
-// Einzelne Termin-Karte bauen
 function baueTerminKarte(termin, user) {
-const teile = (termin.datum || "").split("-");
-const tag = teile || "--";
-const monatIndex = parseInt(teile, 10) - 1;
-const monatName = MONATE_KURZ[monatIndex] || "---";
-const card = document.createElement("div");
-card.className = "event-card";
-let deleteBtnHtml = "";
-if (user.canWrite) {
-deleteBtnHtml = <button type="button" class="btn-delete-small" onclick="loescheTermin('${termin.id}')">Löschen</button>;
-}
-card.innerHTML = <div class="date-badge"> <div class="day">${tag}</div> <div class="month">${monatName}</div> </div> <div class="event-content"> <span class="team-tag">${termin.mannschaft}</span> <h3 class="event-title">${termin.titel}</h3> <div class="event-meta"> <span>🕒 ${termin.uhrzeit} Uhr</span> ${termin.ort ?📍 ${termin.ort}: ""} </div> ${termin.info ?${termin.info}: ""} ${deleteBtnHtml} </div>;
-return card;
-}
-// Termine aus Firebase laden & Live-Sync starten
-async function ladeTermine(stillesUpdate = false) {
-const listeDiv = document.getElementById("termine-liste");
-const user = getAktuellerUser();
-if (!user || !listeDiv) return;
-if (!stillesUpdate && !aktuellerDatenStand) {
-listeDiv.innerHTML = "Lade Kalender...";
-}
-try {
-const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
-const response = await fetch(url);
-if (response.status === 401) return;
-const data = await response.json();
-const neuerStand = JSON.stringify(data || {});
-if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
-aktuellerDatenStand = neuerStand;
-alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
-alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
-renderKalenderAnsicht();
-}
-starteLiveSync(user);
-} catch (err) {}
-}
-function starteLiveSync(user) {
-if (liveStream) return;
-try {
-liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
-liveStream.addEventListener("put", () => ladeTermine(true));
-liveStream.addEventListener("patch", () => ladeTermine(true));
-liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
-} catch (e) {}
-}
-setInterval(() => {
-if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
-}, 10000);
-async function speichereTermin() {
-const user = getAktuellerUser();
-if (!user || !user.canWrite) return;
-const titel = document.getElementById("termin-titel").value.trim();
-const datum = document.getElementById("termin-datum").value;
-const uhrzeit = document.getElementById("termin-uhrzeit").value;
-const mannschaft = document.getElementById("termin-team").value;
-const ort = document.getElementById("termin-ort").value.trim();
-const info = document.getElementById("termin-info").value.trim();
-const msg = document.getElementById("termin-msg");
-if (!titel || !datum || !uhrzeit || !mannschaft) {
-msg.style.color = "#dc2626";
-msg.textContent = "Bitte Titel, Datum, Uhrzeit und Mannschaft ausfüllen!";
-return;
-}
-msg.style.color = "#475569";
-msg.textContent = "Speichere Termin...";
-try {
-const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({ titel, datum, uhrzeit, mannschaft, ort, info, erstelltVon: user.email })
-});
-if (!response.ok) throw new Error("Status " + response.status);
-document.getElementById("termin-titel").value = "";
-document.getElementById("termin-ort").value = "";
-document.getElementById("termin-info").value = "";
-document.getElementById("termin-formular").classList.add("hidden");
-msg.textContent = "";
-ausgewaehltesDatum = datum;
-ladeTermine(true);
-} catch (err) {
-msg.style.color = "#dc2626";
-msg.textContent = "Fehler: " + err.message;
-}
-}
-async function loescheTermin(id) {
-if (!confirm("Diesen Termin wirklich löschen?")) return;
-const user = getAktuellerUser();
-if (!user) return;
-await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
-ladeTermine(true);
-}
+  const teile = (termin.datum || "").split("-");
+  const tag = teile || "--";
+  const monatIndex = parseInt(teile, 10) - 1;
+  const monatName = MONATE_KURZ[monatIndex] || "---";
+
+  const card = document.createElement("div");
+  card.className = "event-card";
+
+  let deleteBtnHtml = "";
+  if (user.canWrite) {
+    deleteBtnHtml = `<button type="button" class="btn-delete-small" onclick="loescheTermin('${termin.id}')">Löschen</button>`;
+  }
+
+  card.innerHTML = `
+    <div class="date-badge">
+      <div class="day">${tag}</div>
+      <div class="month">${monatName}</div>
+    </div>
+    <div class="event-content">
+      <span class="team-tag">${termin.mannschaft}</span>
+      <h3 class="event-title">${termin.titel}</h3>
