@@ -5,6 +5,12 @@ const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
 const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
+function el(tag, props) {
+  const node = document.createElement(tag);
+  if (props) Object.assign(node, props);
+  return node;
+}
+
 function getPermissions(role) {
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
   const canWrite = !["Eltern", "Fan"].includes(role);
@@ -56,19 +62,17 @@ function renderLogin() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  const banner = document.createElement("div");
-  banner.className = "top-banner";
+  const banner = el("div", { className: "top-banner" });
   banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
 
-  const box = document.createElement("div");
-  box.className = "box";
+  const box = el("div", { className: "box" });
   box.innerHTML = "<h2>Willkommen zurück</h2>";
 
-  const emailIn = Object.assign(document.createElement("input"), { type: "email", placeholder: "E-Mail-Adresse" });
-  const passIn = Object.assign(document.createElement("input"), { type: "password", placeholder: "Passwort" });
-  const loginBtn = Object.assign(document.createElement("button"), { type: "button", textContent: "Anmelden" });
-  const toRegBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-secondary", textContent: "Neu im Verein? Konto erstellen" });
-  const errP = Object.assign(document.createElement("p"), { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
+  const emailIn = el("input", { type: "email", placeholder: "E-Mail-Adresse" });
+  const passIn = el("input", { type: "password", placeholder: "Passwort" });
+  const loginBtn = el("button", { type: "button", textContent: "Anmelden" });
+  const toRegBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Neu im Verein? Konto erstellen" });
+  const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
 
   loginBtn.onclick = async () => {
     errP.textContent = "Logge ein...";
@@ -93,31 +97,28 @@ function renderRegister() {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  const banner = document.createElement("div");
-  banner.className = "top-banner";
+  const banner = el("div", { className: "top-banner" });
   banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
 
-  const box = document.createElement("div");
-  box.className = "box";
+  const box = el("div", { className: "box" });
   box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
-  const clubIn = Object.assign(document.createElement("input"), { type: "password", placeholder: "Vereinspasswort" });
-  
-  const roleSel = document.createElement("select");
+  const clubIn = el("input", { type: "password", placeholder: "Vereinspasswort" });
+  const roleSel = el("select");
   roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
 
-  const teamSel = document.createElement("select");
+  const teamSel = el("select");
   teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
 
   roleSel.onchange = () => {
     teamSel.style.display = roleSel.value === "Fan" ? "none" : "block";
   };
 
-  const emailIn = Object.assign(document.createElement("input"), { type: "email", placeholder: "Deine E-Mail-Adresse" });
-  const passIn = Object.assign(document.createElement("input"), { type: "password", placeholder: "Eigenes Passwort (min. 6 Zeichen)" });
-  const regBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-success", textContent: "Registrierung abschließen" });
-  const backBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-secondary", textContent: "Zurück zum Login" });
-  const errP = Object.assign(document.createElement("p"), { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
+  const emailIn = el("input", { type: "email", placeholder: "Deine E-Mail-Adresse" });
+  const passIn = el("input", { type: "password", placeholder: "Eigenes Passwort (min. 6 Zeichen)" });
+  const regBtn = el("button", { type: "button", className: "btn-success", textContent: "Registrierung abschließen" });
+  const backBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Zurück zum Login" });
+  const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
 
   regBtn.onclick = async () => {
     if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Das Vereinspasswort ist falsch!"; return; }
@@ -151,16 +152,14 @@ function renderDashboard(user) {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  const banner = document.createElement("div");
-  banner.className = "top-banner";
+  const banner = el("div", { className: "top-banner" });
   banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p style="color:#cbd5e1;">' + user.email + '</p></div></div>';
-  const logoutBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-logout", textContent: "Abmelden" });
+  const logoutBtn = el("button", { type: "button", className: "btn-logout", textContent: "Abmelden" });
   logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
   banner.appendChild(logoutBtn);
 
   const perms = getPermissions(user.role);
-  const pill = document.createElement("div");
-  pill.className = "profile-pill-bar";
+  const pill = el("div", { className: "profile-pill-bar" });
   const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
                  (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
   pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
@@ -168,21 +167,41 @@ function renderDashboard(user) {
   app.append(banner, pill);
 
   if (perms.canWrite) {
-    const toggleBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
-    const formPanel = document.createElement("div");
-    formPanel.className = "form-panel hidden";
+    const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
+    const formPanel = el("div", { className: "form-panel hidden" });
 
-    const titelIn = Object.assign(document.createElement("input"), { type: "text", id: "termin-titel", placeholder: "Titel (z. B. Heimspiel oder Training)" });
-    const teamSel = Object.assign(document.createElement("select"), { id: "termin-team" });
+    const titelIn = el("input", { type: "text", id: "termin-titel", placeholder: "Titel (z. B. Heimspiel oder Training)" });
+    const teamSel = el("select", { id: "termin-team" });
     teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-    const datumIn = Object.assign(document.createElement("input"), { type: "date", id: "termin-datum" });
-    const zeitIn = Object.assign(document.createElement("input"), { type: "time", id: "termin-uhrzeit" });
-    const ortIn = Object.assign(document.createElement("input"), { type: "text", id: "termin-ort", placeholder: "Ort / Sportplatz (optional)" });
-    const infoIn = Object.assign(document.createElement("textarea"), { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
-    const saveBtn = Object.assign(document.createElement("button"), { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
-    const msgP = Object.assign(document.createElement("p"), { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
+    const datumIn = el("input", { type: "date", id: "termin-datum" });
+    const zeitIn = el("input", { type: "time", id: "termin-uhrzeit" });
+    const ortIn = el("input", { type: "text", id: "termin-ort", placeholder: "Ort / Sportplatz (optional)" });
+    const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
+    const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
+    const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
 
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
     toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
 
     formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
+    app.append(toggleBtn, formPanel);
+  }
+
+  const filterBar = el("div", { className: "filter-bar" });
+  const filterSel = el("select", { id: "filter-team" });
+  filterSel.innerHTML = '<option value="ALLE">Alle Termine anzeigen</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+  filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
+  filterBar.appendChild(filterSel);
+
+  const liste = el("div", { id: "termine-liste" });
+  app.append(filterBar, liste);
+
+  if (typeof ladeTermine === "function") ladeTermine();
+}
+
+const saved = localStorage.getItem("tsv_user_data");
+if (saved) {
+  try { renderDashboard(JSON.parse(saved)); } catch (e) { renderLogin(); }
+} else {
+  renderLogin();
+}
