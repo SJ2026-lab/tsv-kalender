@@ -215,4 +215,59 @@ function renderDashboard(user) {
 
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
     toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
+      banner.appendChild(logoutBtn);
+
+  const perms = getPermissions(user.role);
+  const pill = el("div", { className: "profile-pill-bar" });
+  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
+                 (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
+  pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
+
+  app.append(banner, pill);
+
+  if (perms.canWrite) {
+    const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
+    const formPanel = el("div", { className: "form-panel hidden" });
+
+    const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
+    const teamSel = el("select", { id: "termin-team" });
+    teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+    const datumIn = feld("date", "termin-datum", "");
+    const zeitIn = feld("time", "termin-uhrzeit", "");
+    const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
+    const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
+    const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
+    const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
+
+    saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
+    toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
+
+    formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
+    app.append(toggleBtn, formPanel);
+  }
+
+  const filterBar = el("div", { className: "filter-bar" });
+  const filterSel = el("select", { id: "filter-team" });
+  filterSel.innerHTML = '<option value="ALLE">Alle Termine anzeigen</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+  filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
+  filterBar.appendChild(filterSel);
+
+  const liste = el("div", { id: "termine-liste" });
+  app.append(filterBar, liste);
+
+  if (typeof ladeTermine === "function") ladeTermine();
+}
+
+(async function initApp() {
+  const saved = localStorage.getItem("tsv_user_data");
+  if (saved) {
+    try {
+      let user = JSON.parse(saved);
+      user = await refreshSessionToken(user);
+      if (user) { renderDashboard(user); return; }
+    } catch (e) {}
+  }
+  renderLogin();
+})();
+
 
