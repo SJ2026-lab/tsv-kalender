@@ -42,6 +42,27 @@ async function firebaseAuthRequest(endpoint, email, password) {
   return data;
 }
 
+// Token automatisch im Hintergrund erneuern (verhindert Status 401)
+async function refreshSessionToken(user) {
+  if (!user || !user.refreshToken) return user;
+  try {
+    const base = "https://securetoken" + "." + "googleapis" + "." + "com";
+    const res = await fetch(base + "/v1/token?key=" + apiKey, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ grant_type: "refresh_token", refresh_token: user.refreshToken })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    user.idToken = data.id_token;
+    user.refreshToken = data.refresh_token;
+    localStorage.setItem("tsv_user_data", JSON.stringify(user));
+    return user;
+  } catch (e) {
+    return user;
+  }
+}
+
 async function saveUserProfile(uid, idToken, profile) {
   const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
   const res = await fetch(url, {
@@ -49,7 +70,7 @@ async function saveUserProfile(uid, idToken, profile) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(profile)
   });
-  if (!res.ok) throw new Error("Profil konnte nicht gespeichert werden.");
+  if (!res.ok) throw new Error("Profil konnte nicht gespeichert werden (" + res.status + ").");
 }
 
 async function loadUserProfile(uid, idToken) {
@@ -79,12 +100,16 @@ function renderLogin() {
     errP.textContent = "Logge ein...";
     try {
       const auth = await firebaseAuthRequest("signInWithPassword", emailIn.value.trim(), passIn.value);
-      const prof = await loadUserProfile(auth.localId, auth.idToken);
-      const user = prof || { email: auth.email, role: "Vorstand", team: "Erste Mannschaft", ...getPermissions("Vorstand") };
-      user.idToken = auth.idToken;
-      user.uid = auth.localId;
-      localStorage.setItem("tsv_user_data", JSON.stringify(user));
-      renderDashboard(user);
+      let prof = await loadUserProfile(auth.localId, auth.idToken);
+      if (!prof) {
+        prof = { email: auth.email, role: "Vorstand", team: "Erste Mannschaft", ...getPermissions("Vorstand") };
+        await saveUserProfile(auth.localId, auth.idToken, prof);
+      }
+      prof.idToken = auth.idToken;
+      prof.refreshToken = auth.refreshToken;
+      prof.uid = auth.localId;
+      localStorage.setItem("tsv_user_data", JSON.stringify(prof));
+      renderDashboard(prof);
     } catch (e) { errP.textContent = translateError(e.message); }
   };
 
@@ -137,7 +162,7 @@ function renderRegister() {
         ...perms
       };
       await saveUserProfile(auth.localId, auth.idToken, profile);
-      const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken };
+      const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken, refreshToken: auth.refreshToken };
       localStorage.setItem("tsv_user_data", JSON.stringify(fullUser));
       renderDashboard(fullUser);
     } catch (e) { errP.textContent = translateError(e.message); }
@@ -182,27 +207,5 @@ function renderDashboard(user) {
     const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
 
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
-    toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
 
-    formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
-    app.append(toggleBtn, formPanel);
-  }
-
-  const filterBar = el("div", { className: "filter-bar" });
-  const filterSel = el("select", { id: "filter-team" });
-  filterSel.innerHTML = '<option value="ALLE">Alle Termine anzeigen</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-  filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
-  filterBar.appendChild(filterSel);
-
-  const liste = el("div", { id: "termine-liste" });
-  app.append(filterBar, liste);
-
-  if (typeof ladeTermine === "function") ladeTermine();
-}
-
-const saved = localStorage.getItem("tsv_user_data");
-if (saved) {
-  try { renderDashboard(JSON.parse(saved)); } catch (e) { renderLogin(); }
-} else {
-  renderLogin();
-}
+  
