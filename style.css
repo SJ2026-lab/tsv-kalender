@@ -104,4 +104,120 @@ button {
   background: #fee2e2; color: #dc2626; width: auto; padding: 6px 12px;
   font-size: 12px; border-radius: 8px; margin: 10px 0 0;
 }
+/* Ansichts-Umschalter (Monat / Woche) */
+.view-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.view-switch button {
+  margin-bottom: 0;
+  padding: 10px;
+  font-size: 14px;
+  background: #e2e8f0;
+  color: #334155;
+}
+.view-switch button.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* Kalender-Navigation (< November 2026 >) */
+.cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.cal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--primary);
+}
+.cal-nav-btn {
+  width: auto;
+  padding: 6px 12px;
+  margin: 0;
+  background: #f1f5f9;
+  color: var(--primary);
+  font-size: 16px;
+  border-radius: 10px;
+}
+
+/* Monats-Raster (Mo - So) */
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cal-day {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f8fafc;
+  color: var(--text);
+  position: relative;
+}
+.cal-day.empty {
+  background: transparent;
+  cursor: default;
+}
+.cal-day.today {
+  border: 2px solid var(--blue);
+  color: var(--blue);
+}
+.cal-day.selected {
+  background: var(--primary);
+  color: white;
+}
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+  height: 5px;
+}
+.cal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--accent);
+}
+.cal-day.selected .cal-dot {
+  background-color: #34d399;
+}
+
+/* Wochen-Übersicht */
+.week-day-block {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+.week-day-block:last-child {
+  border-bottom: none;
+}
+.week-day-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+.week-day-title.today-text {
+  color: var(--blue);
+}
 
