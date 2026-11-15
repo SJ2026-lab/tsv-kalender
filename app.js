@@ -1,5 +1,5 @@
 const VEREINS_PASSWORT = "TSV2026";
-const dbHost = "https://kalendertsv-default-rtdb" + "." + "europe-west1" + "." + "firebasedatabase.app";
+const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
 const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
@@ -12,7 +12,7 @@ function el(tag, props) {
 }
 
 function feld(art, idName, hinweis) {
-  const f = document.createElement("input");
+  const f = document.createElement("in" + "put");
   f.setAttribute("type", art);
   if (idName) f.id = idName;
   if (hinweis) f.placeholder = hinweis;
@@ -27,33 +27,32 @@ function getPermissions(role) {
 
 function translateError(msg) {
   const map = {
-    "INVALID_EMAIL": "Bitte gib eine gültige E-Mail-Adresse ein.",
-    "EMAIL_NOT_FOUND": "Kein Konto mit dieser E-Mail gefunden.",
-    "INVALID_PASSWORD": "Das Passwort ist falsch.",
-    "INVALID_LOGIN_CREDENTIALS": "E-Mail oder Passwort ist falsch.",
-    "EMAIL_EXISTS": "Diese E-Mail wird bereits verwendet.",
-    "WEAK_PASSWORD : Password should be at least 6 characters": "Passwort muss mindestens 6 Zeichen haben."
+    "INVALID_EMAIL": "Bitte gültige E-Mail eingeben.",
+    "EMAIL_NOT_FOUND": "Kein Konto gefunden.",
+    "INVALID_PASSWORD": "Passwort ist falsch.",
+    "INVALID_LOGIN_CREDENTIALS": "E-Mail oder Passwort falsch.",
+    "EMAIL_EXISTS": "E-Mail wird bereits verwendet.",
+    "WEAK_PASSWORD : Password should be at least 6 characters": "Passwort min. 6 Zeichen."
   };
   return map[msg] || "Fehler: " + msg;
 }
 
 async function firebaseAuthRequest(endpoint, email, password) {
-  const base = "https://identitytoolkit" + "." + "googleapis" + "." + "com";
-  const url = base + "/v1/accounts:" + endpoint + "?key=" + apiKey;
-  const res = await fetch(url, {
+  const base = "https://identitytoolkit." + "googleapis.com";
+  const res = await fetch(base + "/v1/accounts:" + endpoint + "?key=" + apiKey, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, returnSecureToken: true })
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || "Unbekannter Fehler");
+  if (!res.ok) throw new Error(data.error?.message || "Fehler");
   return data;
 }
 
 async function refreshSessionToken(user) {
   if (!user || !user.refreshToken) return user;
   try {
-    const base = "https://securetoken" + "." + "googleapis" + "." + "com";
+    const base = "https://securetoken." + "googleapis.com";
     const res = await fetch(base + "/v1/token?key=" + apiKey, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,19 +64,16 @@ async function refreshSessionToken(user) {
     user.refreshToken = data.refresh_token;
     localStorage.setItem("tsv_user_data", JSON.stringify(user));
     return user;
-  } catch (e) {
-    return user;
-  }
+  } catch (e) { return user; }
 }
 
 async function saveUserProfile(uid, idToken, profile) {
-  const url = dbHost + "/users/" + uid + ".json?auth=" + idToken;
-  const res = await fetch(url, {
+  const res = await fetch(dbHost + "/users/" + uid + ".json?auth=" + idToken, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(profile)
   });
-  if (!res.ok) throw new Error("Profil konnte nicht gespeichert werden (" + res.status + ").");
+  if (!res.ok) throw new Error("Speicherfehler (" + res.status + ")");
 }
 
 async function loadUserProfile(uid, idToken) {
@@ -87,13 +83,15 @@ async function loadUserProfile(uid, idToken) {
   } catch (e) { return null; }
 }
 
+function makeBanner(title, sub) {
+  const b = el("div", { className: "top-banner" });
+  b.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>' + title + '</h1><p style="color:#cbd5e1;">' + sub + '</p></div></div>';
+  return b;
+}
+
 function renderLogin() {
   const app = document.getElementById("app");
   app.innerHTML = "";
-
-  const banner = el("div", { className: "top-banner" });
-  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
-
   const box = el("div", { className: "box" });
   box.innerHTML = "<h2>Willkommen zurück</h2>";
 
@@ -121,31 +119,23 @@ function renderLogin() {
   };
 
   toRegBtn.onclick = () => renderRegister();
-
   box.append(emailIn, passIn, loginBtn, toRegBtn, errP);
-  app.append(banner, box);
+  app.append(makeBanner("TSV Kalender", "Vereins- & Mannschaftstermine"), box);
 }
 
 function renderRegister() {
   const app = document.getElementById("app");
   app.innerHTML = "";
-
-  const banner = el("div", { className: "top-banner" });
-  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
-
   const box = el("div", { className: "box" });
   box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
   const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
   roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
-
   const teamSel = el("select");
   teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
 
-  roleSel.onchange = () => {
-    teamSel.style.display = roleSel.value === "Fan" ? "none" : "block";
-  };
+  roleSel.onchange = () => { teamSel.style.display = roleSel.value === "Fan" ? "none" : "block"; };
 
   const emailIn = feld("email", "", "Deine E-Mail-Adresse");
   const passIn = feld("password", "", "Eigenes Passwort (min. 6 Zeichen)");
@@ -154,20 +144,14 @@ function renderRegister() {
   const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
 
   regBtn.onclick = async () => {
-    if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Das Vereinspasswort ist falsch!"; return; }
-    if (!roleSel.value) { errP.textContent = "Bitte Funktion auswählen!"; return; }
-    if (roleSel.value !== "Fan" && !teamSel.value) { errP.textContent = "Bitte Mannschaft auswählen!"; return; }
-
+    if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Vereinspasswort falsch!"; return; }
+    if (!roleSel.value) { errP.textContent = "Bitte Funktion wählen!"; return; }
+    if (roleSel.value !== "Fan" && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
     errP.textContent = "Konto wird erstellt...";
     try {
       const auth = await firebaseAuthRequest("signUp", emailIn.value.trim(), passIn.value);
       const perms = getPermissions(roleSel.value);
-      const profile = {
-        email: auth.email,
-        role: roleSel.value,
-        team: roleSel.value === "Fan" ? "" : teamSel.value,
-        ...perms
-      };
+      const profile = { email: auth.email, role: roleSel.value, team: roleSel.value === "Fan" ? "" : teamSel.value, ...perms };
       await saveUserProfile(auth.localId, auth.idToken, profile);
       const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken, refreshToken: auth.refreshToken };
       localStorage.setItem("tsv_user_data", JSON.stringify(fullUser));
@@ -176,17 +160,15 @@ function renderRegister() {
   };
 
   backBtn.onclick = () => renderLogin();
-
   box.append(clubIn, roleSel, teamSel, emailIn, passIn, regBtn, backBtn, errP);
-  app.append(banner, box);
+  app.append(makeBanner("Mitglied werden", "Einmalige Registrierung"), box);
 }
 
 function renderDashboard(user) {
   const app = document.getElementById("app");
   app.innerHTML = "";
 
-  const banner = el("div", { className: "top-banner" });
-  banner.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p style="color:#cbd5e1;">' + user.email + '</p></div></div>';
+  const banner = makeBanner("TSV Termine", user.email);
   const logoutBtn = el("button", { type: "button", className: "btn-logout", textContent: "Abmelden" });
   logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
   banner.appendChild(logoutBtn);
@@ -196,13 +178,11 @@ function renderDashboard(user) {
   const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
                  (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
   pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
-
   app.append(banner, pill);
 
   if (perms.canWrite) {
     const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
     const formPanel = el("div", { className: "form-panel hidden" });
-
     const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
     const teamSel = el("select", { id: "termin-team" });
     teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
@@ -215,33 +195,6 @@ function renderDashboard(user) {
 
     saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
     toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
-      banner.appendChild(logoutBtn);
-
-  const perms = getPermissions(user.role);
-  const pill = el("div", { className: "profile-pill-bar" });
-  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
-                 (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
-  pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
-
-  app.append(banner, pill);
-
-  if (perms.canWrite) {
-    const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
-    const formPanel = el("div", { className: "form-panel hidden" });
-
-    const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
-    const teamSel = el("select", { id: "termin-team" });
-    teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-    const datumIn = feld("date", "termin-datum", "");
-    const zeitIn = feld("time", "termin-uhrzeit", "");
-    const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
-    const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
-    const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
-    const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
-
-    saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
-    toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
-
     formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
     app.append(toggleBtn, formPanel);
   }
@@ -249,25 +202,19 @@ function renderDashboard(user) {
   const filterBar = el("div", { className: "filter-bar" });
   const filterSel = el("select", { id: "filter-team" });
   filterSel.innerHTML = '<option value="ALLE">Alle Termine anzeigen</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-  filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
-  filterBar.appendChild(filterSel);
-
-  const liste = el("div", { id: "termine-liste" });
-  app.append(filterBar, liste);
-
-  if (typeof ladeTermine === "function") ladeTermine();
+filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
+filterBar.appendChild(filterSel);
+const liste = el("div", { id: "termine-liste" });
+app.append(filterBar, liste);
+if (typeof ladeTermine === "function") ladeTermine();
 }
-
 (async function initApp() {
-  const saved = localStorage.getItem("tsv_user_data");
-  if (saved) {
-    try {
-      let user = JSON.parse(saved);
-      user = await refreshSessionToken(user);
-      if (user) { renderDashboard(user); return; }
-    } catch (e) {}
-  }
-  renderLogin();
+const saved = localStorage.getItem("tsv_user_data");
+if (saved) {
+try {
+let user = await refreshSessionToken(JSON.parse(saved));
+if (user) { renderDashboard(user); return; }
+} catch (e) {}
+}
+renderLogin();
 })();
-
-
