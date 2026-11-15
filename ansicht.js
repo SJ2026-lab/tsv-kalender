@@ -44,7 +44,6 @@ function renderKalenderAnsicht() {
 
   container.innerHTML = "";
 
-  // Umschalter Monat / Woche
   const switchBar = document.createElement("div");
   switchBar.className = "view-switch";
   const btnM = Object.assign(document.createElement("button"), { type: "button", textContent: "Monatsansicht", className: aktuelleAnsicht === "MONAT" ? "active" : "" });
@@ -103,7 +102,6 @@ function zeigeMonat(container, termine, user) {
   calBox.appendChild(grid);
   container.appendChild(calBox);
 
-  // Tages-Box unter dem Kalender
   const detBox = document.createElement("div");
   detBox.className = "box";
   const lesbar = ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + "." + ausgewaehltesDatum.slice(0, 4);
@@ -160,7 +158,11 @@ function zeigeWoche(container, termine, user) {
       const plus = Object.assign(document.createElement("span"), { textContent: "+ Termin", style: "color:var(--blue);cursor:pointer;font-size:12px;" });
       plus.onclick = () => oeffneTerminFormular(iso);
       row.appendChild(plus);
-        if (liste.length === 0) {
+    }
+    block.appendChild(row);
+
+    const liste = termine.filter(x => x.datum === iso);
+    if (liste.length === 0) {
       block.appendChild(Object.assign(document.createElement("div"), { style: "font-size:13px;color:#94a3b8;", textContent: "Keine Termine" }));
     } else {
       liste.forEach(x => block.appendChild(erstelleKarte(x, user)));
