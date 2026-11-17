@@ -1,7 +1,28 @@
 const kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+const MONATE_LANG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+const MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
+const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
 let alleTermineCache = [];
 let aktuellerDatenStand = "";
 let liveStream = null;
+
+let aktuelleAnsicht = "MONAT";
+let ausgewaehltesDatum = heuteIso();
+let ansichtJahr = new Date().getFullYear();
+let ansichtMonat = new Date().getMonth();
+let wochenStartDatum = getMontag(new Date());
+
+function heuteIso() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function getMontag(datum) {
+  const d = new Date(datum);
+  const tag = d.getDay();
+  return new Date(d.setDate(d.getDate() - tag + (tag === 0 ? -6 : 1)));
+}
 
 function getAktuellerUser() {
   const userJson = localStorage.getItem("tsv_user_data");
@@ -9,28 +30,179 @@ function getAktuellerUser() {
   try { return JSON.parse(userJson); } catch (e) { return null; }
 }
 
+function wechseleAnsicht(modus) {
+  aktuelleAnsicht = modus;
+  renderKalenderAnsicht();
+}
+
+function oeffneTerminFormular(iso) {
+  const modal = document.getElementById("termin-modal");
+  const feld = document.getElementById("termin-datum");
+  if (modal) {
+    if (feld && iso) feld.value = iso;
+    modal.classList.remove("hidden");
+  }
+}
+
+function renderKalenderAnsicht() {
+  const container = document.getElementById("termine-liste");
+  const user = getAktuellerUser();
+  if (!container || !user) return;
+
+  const filterTeam = typeof aktiverMannschaftsFilter !== "undefined" ? aktiverMannschaftsFilter : "ALLE";
+  const termine = filterTeam === "ALLE" ? alleTermineCache : alleTermineCache.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
+
+  container.innerHTML = "";
+
+  if (aktuelleAnsicht === "MONAT") {
+    zeigeMonat(container, termine, user);
+  } else {
+    zeigeWoche(container, termine, user);
+  }
+}
+
+function zeigeMonat(container, termine, user) {
+  const calBox = document.createElement("div");
+  calBox.className = "box";
+  calBox.style.marginBottom = "14px";
+
+  const header = document.createElement("div");
+  header.className = "cal-header";
+  const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
+  const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
+  const title = Object.assign(document.createElement("h3"), { textContent: MONATE_LANG[ansichtMonat] + " " + ansichtJahr });
+  prev.onclick = () => { ansichtMonat--; if (ansichtMonat < 0) { ansichtMonat = 11; ansichtJahr--; } renderKalenderAnsicht(); };
+  next.onclick = () => { ansichtMonat++; if (ansichtMonat > 11) { ansichtMonat = 0; ansichtJahr++; } renderKalenderAnsicht(); };
+  header.append(prev, title, next);
+  calBox.appendChild(header);
+
+  const wd = document.createElement("div");
+  wd.className = "cal-weekdays";
+  wd.innerHTML = WOCHENTAGE.map(w => "<div>" + w + "</div>").join("");
+  calBox.appendChild(wd);
+
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+  let start = new Date(ansichtJahr, ansichtMonat, 1).getDay();
+  start = start === 0 ? 6 : start - 1;
+  const tage = new Date(ansichtJahr, ansichtMonat + 1, 0).getDate();
+  const heute = heuteIso();
+
+  for (let i = 0; i < start; i++) grid.appendChild(Object.assign(document.createElement("div"), { className: "cal-day empty" }));
+
+  for (let t = 1; t <= tage; t++) {
+    const iso = ansichtJahr + "-" + String(ansichtMonat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
+    const count = termine.filter(x => x.datum === iso).length;
+    const cell = document.createElement("div");
+    cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === ausgewaehltesDatum ? " selected" : "");
+    const dots = count > 0 ? '<div class="cal-dots">' + '<span class="cal-dot"></span>'.repeat(Math.min(count, 3)) + '</div>' : "";
+    cell.innerHTML = "<span>" + t + "</span>" + dots;
+    cell.onclick = () => { ausgewaehltesDatum = iso; renderKalenderAnsicht(); };
+    grid.appendChild(cell);
+  }
+  calBox.appendChild(grid);
+  container.appendChild(calBox);
+
+  const detBox = document.createElement("div");
+  detBox.className = "box";
+  const lesbar = ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + "." + ausgewaehltesDatum.slice(0, 4);
+  detBox.innerHTML = '<h3 style="margin:0 0 12px;font-size:16px;">Termine am ' + lesbar + '</h3>';
+
+  if (user.canWrite) {
+    const addBtn = Object.assign(document.createElement("button"), {
+      type: "button", className: "btn-success", style: "margin-bottom:14px;",
+      textContent: "+ Termin am " + ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + ". hinzufügen"
+    });
+    addBtn.onclick = () => oeffneTerminFormular(ausgewaehltesDatum);
+    detBox.appendChild(addBtn);
+  }
+
+  const liste = termine.filter(x => x.datum === ausgewaehltesDatum);
+  if (liste.length === 0) {
+    detBox.appendChild(Object.assign(document.createElement("p"), { style: "color:#64748b;font-size:14px;margin:0;", textContent: "Keine Termine an diesem Tag." }));
+  } else {
+    liste.forEach(x => detBox.appendChild(erstelleKarte(x, user)));
+  }
+  container.appendChild(detBox);
+}
+
+function zeigeWoche(container, termine, user) {
+  const wBox = document.createElement("div");
+  wBox.className = "box";
+  const ende = new Date(wochenStartDatum);
+  ende.setDate(ende.getDate() + 6);
+
+  const header = document.createElement("div");
+  header.className = "cal-header";
+  const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
+  const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
+  const titelText = String(wochenStartDatum.getDate()).padStart(2, "0") + "." + String(wochenStartDatum.getMonth() + 1).padStart(2, "0") + ". – " +
+                    String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
+  const title = Object.assign(document.createElement("h3"), { textContent: titelText });
+  prev.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() - 7); renderKalenderAnsicht(); };
+  next.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() + 7); renderKalenderAnsicht(); };
+  header.append(prev, title, next);
+  wBox.appendChild(header);
+
+  const heute = heuteIso();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wochenStartDatum);
+    d.setDate(d.getDate() + i);
+    const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const block = document.createElement("div");
+    block.className = "week-day-block";
+
+    const row = document.createElement("div");
+    row.className = "week-day-title" + (iso === heute ? " today-text" : "");
+    row.innerHTML = "<span>" + WOCHENTAGE[i] + ", " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".</span>";
+    if (user.canWrite) {
+      const plus = Object.assign(document.createElement("span"), { textContent: "+ Termin", style: "color:var(--blue);cursor:pointer;font-size:12px;" });
+      plus.onclick = () => oeffneTerminFormular(iso);
+      row.appendChild(plus);
+    }
+    block.appendChild(row);
+
+    const liste = termine.filter(x => x.datum === iso);
+    if (liste.length === 0) {
+      block.appendChild(Object.assign(document.createElement("div"), { style: "font-size:13px;color:#94a3b8;", textContent: "Keine Termine" }));
+    } else {
+      liste.forEach(x => block.appendChild(erstelleKarte(x, user)));
+    }
+    wBox.appendChild(block);
+  }
+  container.appendChild(wBox);
+}
+
+function erstelleKarte(t, user) {
+  const dStr = t.datum || "";
+  const tag = dStr.slice(8, 10) || "--";
+  const mon = MONATE_KURZ[parseInt(dStr.slice(5, 7), 10) - 1] || "---";
+  const card = document.createElement("div");
+  card.className = "event-card";
+  const del = user.canWrite ? `<button type="button" class="btn-delete-small" onclick="loescheTermin('${t.id}')">Löschen</button>` : "";
+  card.innerHTML = `
+    <div class="date-badge"><div class="day">${tag}</div><div class="month">${mon}</div></div>
+    <div class="event-content">
+      <span class="team-tag">${t.mannschaft}</span>
+      <h3 class="event-title">${t.titel}</h3>
+      <div class="event-meta"><span>🕒 ${t.uhrzeit} Uhr</span>${t.ort ? "<span>📍 " + t.ort + "</span>" : ""}</div>
+      ${t.info ? '<div class="event-note">' + t.info + '</div>' : ""}
+      ${del}
+    </div>`;
+  return card;
+}
+
 async function ladeTermine(stillesUpdate = false) {
   const listeDiv = document.getElementById("termine-liste");
   const user = getAktuellerUser();
   if (!user || !listeDiv) return;
 
-  if (!stillesUpdate) {
-    if (typeof renderKalenderAnsicht === "function") {
-      renderKalenderAnsicht();
-    } else {
-      listeDiv.innerHTML = "<div class='box' style='color:#dc2626;'>Fehler: ansichten.js konnte nicht geladen werden.</div>";
-      return;
-    }
-  }
+  if (!stillesUpdate) renderKalenderAnsicht();
 
   try {
     const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
     const response = await fetch(url);
-
-    if (response.status === 401) {
-      listeDiv.insertAdjacentHTML("afterbegin", "<div class='box' style='color:#dc2626;margin-bottom:12px;'>Sitzung abgelaufen – bitte einmal oben auf <strong>Abmelden</strong> tippen und neu anmelden.</div>");
-      return;
-    }
+    if (response.status === 401) return;
 
     const data = await response.json();
     const neuerStand = JSON.stringify(data || {});
@@ -39,7 +211,7 @@ async function ladeTermine(stillesUpdate = false) {
       aktuellerDatenStand = neuerStand;
       alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
       alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
-      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+      renderKalenderAnsicht();
     }
 
     starteLiveSync(user);
@@ -49,70 +221,55 @@ async function ladeTermine(stillesUpdate = false) {
 function starteLiveSync(user) {
   if (liveStream) return;
   try {
-    liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
-    liveStream.addEventListener("put", () => ladeTermine(true));
-    liveStream.addEventListener("patch", () => ladeTermine(true));
-    liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
-  } catch (e) {}
+liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
+liveStream.addEventListener("put", () => ladeTermine(true));
+liveStream.addEventListener("patch", () => ladeTermine(true));
+liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
+} catch (e) {}
 }
-
 setInterval(() => {
-  if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
+if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
 }, 10000);
-
-document.addEventListener("change", (e) => {
-  if (e.target && e.target.id === "filter-team" && typeof renderKalenderAnsicht === "function") {
-    renderKalenderAnsicht();
-  }
-});
-
 async function speichereTermin() {
-  const user = getAktuellerUser();
-  if (!user || !user.canWrite) return;
-
-  const titel = document.getElementById("termin-titel").value.trim();
-  const datum = document.getElementById("termin-datum").value;
-  const uhrzeit = document.getElementById("termin-uhrzeit").value;
-  const mannschaft = document.getElementById("termin-team").value;
-  const ort = document.getElementById("termin-ort").value.trim();
-  const info = document.getElementById("termin-info").value.trim();
-  const msg = document.getElementById("termin-msg");
-
-  if (!titel || !datum || !uhrzeit || !mannschaft) {
-    msg.style.color = "#dc2626";
-    msg.textContent = "Bitte Titel, Datum, Uhrzeit und Mannschaft ausfüllen!";
-    return;
-  }
-
-  msg.style.color = "#475569";
-  msg.textContent = "Speichere Termin...";
-
-  try {
-    const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titel, datum, uhrzeit, mannschaft, ort, info, erstelltVon: user.email })
-    });
-    if (!response.ok) throw new Error("Status " + response.status);
-
-    document.getElementById("termin-titel").value = "";
-    document.getElementById("termin-ort").value = "";
-    document.getElementById("termin-info").value = "";
-    document.getElementById("termin-formular").classList.add("hidden");
-    msg.textContent = "";
-
-    if (typeof setzeAusgewaehltesDatum === "function") setzeAusgewaehltesDatum(datum);
-    ladeTermine(true);
-  } catch (err) {
-    msg.style.color = "#dc2626";
-    msg.textContent = "Fehler: " + err.message;
-  }
+const user = getAktuellerUser();
+if (!user || !user.canWrite) return;
+const titel = document.getElementById("termin-titel").value.trim();
+const datum = document.getElementById("termin-datum").value;
+const uhrzeit = document.getElementById("termin-uhrzeit").value;
+const mannschaft = document.getElementById("termin-team").value;
+const ort = document.getElementById("termin-ort").value.trim();
+const info = document.getElementById("termin-info").value.trim();
+const msg = document.getElementById("termin-msg");
+if (!titel || !datum || !uhrzeit || !mannschaft) {
+msg.style.color = "#dc2626";
+msg.textContent = "Bitte Titel, Datum, Uhrzeit und Mannschaft ausfüllen!";
+return;
 }
-
+msg.style.color = "#475569";
+msg.textContent = "Speichere Termin...";
+try {
+const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ titel, datum, uhrzeit, mannschaft, ort, info, erstelltVon: user.email })
+});
+if (!response.ok) throw new Error("Status " + response.status);
+document.getElementById("termin-titel").value = "";
+document.getElementById("termin-ort").value = "";
+document.getElementById("termin-info").value = "";
+document.getElementById("termin-modal").classList.add("hidden");
+msg.textContent = "";
+ausgewaehltesDatum = datum;
+ladeTermine(true);
+} catch (err) {
+msg.style.color = "#dc2626";
+msg.textContent = "Fehler: " + err.message;
+}
+}
 async function loescheTermin(id) {
-  if (!confirm("Diesen Termin wirklich löschen?")) return;
-  const user = getAktuellerUser();
-  if (!user) return;
-  await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
-  ladeTermine(true);
+if (!confirm("Diesen Termin wirklich löschen?")) return;
+const user = getAktuellerUser();
+if (!user) return;
+await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
+ladeTermine(true);
 }
