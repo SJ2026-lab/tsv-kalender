@@ -1,264 +1,299 @@
-const VEREINS_PASSWORT = "TSV2026";
-const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
-const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
+const kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+const MONATE_LANG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+const MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
+const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
-const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
-const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
+let alleTermineCache = [];
+let aktuellerDatenStand = "";
+let liveStream = null;
 
-let aktiverMannschaftsFilter = "ALLE";
+let aktuelleAnsicht = "MONAT";
+let ausgewaehltesDatum = heuteIso();
+let ansichtJahr = new Date().getFullYear();
+let ansichtMonat = new Date().getMonth();
+let wochenStartDatum = getMontag(new Date());
 
-function el(tag, props) {
-  const node = document.createElement(tag);
-  if (props) Object.assign(node, props);
-  return node;
+function heuteIso() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
-function feld(art, idName, hinweis) {
-  const f = document.createElement("in" + "put");
-  f.setAttribute("type", art);
-  if (idName) f.id = idName;
-  if (hinweis) f.placeholder = hinweis;
-  return f;
+function getMontag(datum) {
+  const d = new Date(datum);
+  const tag = d.getDay();
+  return new Date(d.setDate(d.getDate() - tag + (tag === 0 ? -6 : 1)));
 }
 
-function getPermissions(role) {
-  const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
-  const canWrite = !["Eltern", "Fan"].includes(role);
-  return { canRead: true, canWrite, isAdmin };
+function getAktuellerUser() {
+  const userJson = localStorage.getItem("tsv_user_data");
+  if (!userJson) return null;
+  try { return JSON.parse(userJson); } catch (e) { return null; }
 }
 
-function translateError(msg) {
-  const map = {
-    "INVALID_EMAIL": "Bitte gültige E-Mail eingeben.",
-    "EMAIL_NOT_FOUND": "Kein Konto gefunden.",
-    "INVALID_PASSWORD": "Passwort ist falsch.",
-    "INVALID_LOGIN_CREDENTIALS": "E-Mail oder Passwort falsch.",
-    "EMAIL_EXISTS": "E-Mail wird bereits verwendet.",
-    "WEAK_PASSWORD : Password should be at least 6 characters": "Passwort min. 6 Zeichen."
-  };
-  return map[msg] || "Fehler: " + msg;
+function wechseleAnsicht(modus) {
+  aktuelleAnsicht = modus;
+  renderKalenderAnsicht();
 }
 
-async function firebaseAuthRequest(endpoint, email, password) {
-  const base = "https://identitytoolkit." + "googleapis.com";
-  const res = await fetch(base + "/v1/accounts:" + endpoint + "?key=" + apiKey, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, returnSecureToken: true })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || "Fehler");
-  return data;
+function oeffneTerminFormular(iso) {
+  const modal = document.getElementById("termin-modal");
+  const feld = document.getElementById("termin-datum");
+  if (modal) {
+    if (feld && iso) feld.value = iso;
+    modal.classList.remove("hidden");
+  }
 }
 
-async function refreshSessionToken(user) {
-  if (!user || !user.refreshToken) return user;
-  try {
-    const base = "https://securetoken." + "googleapis.com";
-    const res = await fetch(base + "/v1/token?key=" + apiKey, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grant_type: "refresh_token", refresh_token: user.refreshToken })
+function renderKalenderAnsicht() {
+  const container = document.getElementById("termine-liste");
+  const user = getAktuellerUser();
+  if (!container || !user) return;
+
+  const filterTeam = typeof aktiverMannschaftsFilter !== "undefined" ? aktiverMannschaftsFilter : "ALLE";
+  const termine = filterTeam === "ALLE" ? alleTermineCache : alleTermineCache.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
+
+  container.innerHTML = "";
+
+  if (aktuelleAnsicht === "MONAT") {
+    zeigeMonat(container, termine, user);
+  } else {
+    zeigeWoche(container, termine, user);
+  }
+}
+
+function zeigeMonat(container, termine, user) {
+  const calBox = document.createElement("div");
+  calBox.className = "box";
+  calBox.style.marginBottom = "14px";
+
+  const header = document.createElement("div");
+  header.className = "cal-header";
+  const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
+  const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
+  const title = Object.assign(document.createElement("h3"), { textContent: MONATE_LANG[ansichtMonat] + " " + ansichtJahr });
+  prev.onclick = () => { ansichtMonat--; if (ansichtMonat < 0) { ansichtMonat = 11; ansichtJahr--; } renderKalenderAnsicht(); };
+  next.onclick = () => { ansichtMonat++; if (ansichtMonat > 11) { ansichtMonat = 0; ansichtJahr++; } renderKalenderAnsicht(); };
+  header.append(prev, title, next);
+  calBox.appendChild(header);
+
+  const wd = document.createElement("div");
+  wd.className = "cal-weekdays";
+  wd.innerHTML = WOCHENTAGE.map(w => "<div>" + w + "</div>").join("");
+  calBox.appendChild(wd);
+
+  const grid = document.createElement("div");
+  grid.className = "cal-grid";
+  let start = new Date(ansichtJahr, ansichtMonat, 1).getDay();
+  start = start === 0 ? 6 : start - 1;
+  const tage = new Date(ansichtJahr, ansichtMonat + 1, 0).getDate();
+  const heute = heuteIso();
+
+  for (let i = 0; i < start; i++) grid.appendChild(Object.assign(document.createElement("div"), { className: "cal-day empty" }));
+
+  for (let t = 1; t <= tage; t++) {
+    const iso = ansichtJahr + "-" + String(ansichtMonat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
+    const count = termine.filter(x => x.datum === iso).length;
+    const cell = document.createElement("div");
+    cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === ausgewaehltesDatum ? " selected" : "");
+    const dots = count > 0 ? '<div class="cal-dots">' + '<span class="cal-dot"></span>'.repeat(Math.min(count, 3)) + '</div>' : "";
+    cell.innerHTML = "<span>" + t + "</span>" + dots;
+    cell.onclick = () => { ausgewaehltesDatum = iso; renderKalenderAnsicht(); };
+    grid.appendChild(cell);
+  }
+  calBox.appendChild(grid);
+  container.appendChild(calBox);
+
+  const detBox = document.createElement("div");
+  detBox.className = "box";
+  const lesbar = ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + "." + ausgewaehltesDatum.slice(0, 4);
+  detBox.innerHTML = '<h3 style="margin:0 0 12px;font-size:16px;">Termine am ' + lesbar + '</h3>';
+
+  if (user.canWrite) {
+    const addBtn = Object.assign(document.createElement("button"), {
+      type: "button", className: "btn-success", style: "margin-bottom:14px;",
+      textContent: "+ Termin am " + ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + ". hinzufügen"
     });
-    if (!res.ok) return null;
-    const data = await res.json();
-    user.idToken = data.id_token;
-    user.refreshToken = data.refresh_token;
-    localStorage.setItem("tsv_user_data", JSON.stringify(user));
-    return user;
-  } catch (e) { return user; }
-}
-
-async function saveUserProfile(uid, idToken, profile) {
-  const res = await fetch(dbHost + "/users/" + uid + ".json?auth=" + idToken, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(profile)
-  });
-  if (!res.ok) throw new Error("Speicherfehler (" + res.status + ")");
-}
-
-async function loadUserProfile(uid, idToken) {
-  try {
-    const res = await fetch(dbHost + "/users/" + uid + ".json?auth=" + idToken);
-    return res.ok ? await res.json() : null;
-  } catch (e) { return null; }
-}
-
-function renderLogin() {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-
-  const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
-
-  const box = el("div", { className: "box" });
-  box.innerHTML = "<h2>Willkommen zurück</h2>";
-
-  const emailIn = feld("email", "", "E-Mail-Adresse");
-  const passIn = feld("password", "", "Passwort");
-  const loginBtn = el("button", { type: "button", textContent: "Anmelden" });
-  const toRegBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Neu im Verein? Konto erstellen" });
-  const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
-
-  loginBtn.onclick = async () => {
-    errP.textContent = "Logge ein...";
-    try {
-      const auth = await firebaseAuthRequest("signInWithPassword", emailIn.value.trim(), passIn.value);
-      let prof = await loadUserProfile(auth.localId, auth.idToken);
-      if (!prof) {
-        prof = { email: auth.email, role: "Vorstand", team: "Erste Mannschaft", ...getPermissions("Vorstand") };
-        await saveUserProfile(auth.localId, auth.idToken, prof);
-      }
-      prof.idToken = auth.idToken;
-      prof.refreshToken = auth.refreshToken;
-      prof.uid = auth.localId;
-      localStorage.setItem("tsv_user_data", JSON.stringify(prof));
-      renderDashboard(prof);
-    } catch (e) { errP.textContent = translateError(e.message); }
-  };
-
-  toRegBtn.onclick = () => renderRegister();
-  box.append(emailIn, passIn, loginBtn, toRegBtn, errP);
-  app.append(head, box);
-}
-
-function renderRegister() {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-
-  const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
-
-  const box = el("div", { className: "box" });
-  box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
-
-  const clubIn = feld("password", "", "Vereinspasswort");
-  const roleSel = el("select");
-  roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
-  const teamSel = el("select");
-  teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-
-  roleSel.onchange = () => { teamSel.style.display = roleSel.value === "Fan" ? "none" : "block"; };
-
-  const emailIn = feld("email", "", "Deine E-Mail-Adresse");
-  const passIn = feld("password", "", "Eigenes Passwort (min. 6 Zeichen)");
-  const regBtn = el("button", { type: "button", className: "btn-success", textContent: "Registrierung abschließen" });
-  const backBtn = el("button", { type: "button", className: "btn-secondary", textContent: "Zurück zum Login" });
-  const errP = el("p", { style: "color:var(--danger);font-size:14px;font-weight:600;margin:0;" });
-
-  regBtn.onclick = async () => {
-    if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Vereinspasswort falsch!"; return; }
-    if (!roleSel.value) { errP.textContent = "Bitte Funktion wählen!"; return; }
-    if (roleSel.value !== "Fan" && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
-    errP.textContent = "Konto wird erstellt...";
-    try {
-      const auth = await firebaseAuthRequest("signUp", emailIn.value.trim(), passIn.value);
-      const perms = getPermissions(roleSel.value);
-      const profile = { email: auth.email, role: roleSel.value, team: roleSel.value === "Fan" ? "" : teamSel.value, ...perms };
-      await saveUserProfile(auth.localId, auth.idToken, profile);
-      const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken, refreshToken: auth.refreshToken };
-      localStorage.setItem("tsv_user_data", JSON.stringify(fullUser));
-      renderDashboard(fullUser);
-    } catch (e) { errP.textContent = translateError(e.message); }
-  };
-
-  backBtn.onclick = () => renderLogin();
-  box.append(clubIn, roleSel, teamSel, emailIn, passIn, regBtn, backBtn, errP);
-  app.append(head, box);
-}
-
-function renderDashboard(user) {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  const perms = getPermissions(user.role);
-
-  const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
-  app.appendChild(head);
-
-  const chipRow = el("div", { className: "chips-scroll" });
-  ["ALLE", ...MANNSCHAFTEN].forEach(team => {
-    const btn = el("button", {
-      type: "button",
-      className: "chip" + (aktiverMannschaftsFilter === team ? " active" : ""),
-      textContent: team === "ALLE" ? "Alle" : team
-    });
-    btn.onclick = () => {
-      aktiverMannschaftsFilter = team;
-      chipRow.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-      btn.classList.add("active");
-      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
-    };
-    chipRow.appendChild(btn);
-  });
-  app.appendChild(chipRow);
-
-  const kalenderBereich = el("div", { id: "termine-liste" });
-  const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
-
-  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span>' : '') +
-                 (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
-  profilBereich.innerHTML = '<h2>Mein Vereinsprofil</h2><p style="font-size:14px;margin:0 0 8px;"><strong>E-Mail:</strong> ' + user.email + '</p><p style="font-size:14px;margin:0 0 8px;"><strong>Funktion:</strong> ' + user.role + '</p>' + (user.team ? '<p style="font-size:14px;margin:0 0 12px;"><strong>Mannschaft:</strong> ' + user.team + '</p>' : '') + '<div style="margin-bottom:20px;">' + badges + '</div>';
-  const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
-  logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
-  profilBereich.appendChild(logoutBtn);
-
-  app.append(kalenderBereich, profilBereich);
-
-  // Termin-Editor aus editor.js aufbauen
-  if (perms.canWrite && typeof baueTerminEditor === "function") {
-    baueTerminEditor(app, MANNSCHAFTEN);
+    addBtn.onclick = () => oeffneTerminFormular(ausgewaehltesDatum);
+    detBox.appendChild(addBtn);
   }
 
-  // Bottom Navigation
-  const nav = el("div", { className: "bottom-nav" });
-  const navMonat = el("button", { type: "button", className: "nav-item active", innerHTML: '<span class="nav-icon">📅</span><span>Monat</span>' });
-const navWoche = el("button", { type: "button", className: "nav-item", innerHTML: '📋Woche' });
-const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
-function setActiveNav(btn) {
-nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
-btn.classList.add("active");
+  const liste = termine.filter(x => x.datum === ausgewaehltesDatum);
+  if (liste.length === 0) {
+    detBox.appendChild(Object.assign(document.createElement("p"), { style: "color:#64748b;font-size:14px;margin:0;", textContent: "Keine Termine an diesem Tag." }));
+  } else {
+    liste.forEach(x => detBox.appendChild(erstelleKarte(x, user)));
+  }
+  container.appendChild(detBox);
 }
-navMonat.onclick = () => {
-setActiveNav(navMonat);
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-chipRow.classList.remove("hidden");
-if (typeof wechseleAnsicht === "function") wechseleAnsicht("MONAT");
-};
-navWoche.onclick = () => {
-setActiveNav(navWoche);
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-chipRow.classList.remove("hidden");
-if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
-};
-navProfil.onclick = () => {
-setActiveNav(navProfil);
-kalenderBereich.classList.add("hidden");
-chipRow.classList.add("hidden");
-profilBereich.classList.remove("hidden");
-};
-nav.append(navMonat, navWoche);
-if (perms.canWrite) {
-const fab = el("button", { type: "button", className: "nav-fab", textContent: "+" });
-fab.onclick = () => {
-if (typeof oeffneTerminFormular === "function") oeffneTerminFormular("");
-};
-nav.appendChild(fab);
+
+function zeigeWoche(container, termine, user) {
+  const wBox = document.createElement("div");
+  wBox.className = "box";
+  const ende = new Date(wochenStartDatum);
+  ende.setDate(ende.getDate() + 6);
+
+  const header = document.createElement("div");
+  header.className = "cal-header";
+  const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
+  const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
+  const titelText = String(wochenStartDatum.getDate()).padStart(2, "0") + "." + String(wochenStartDatum.getMonth() + 1).padStart(2, "0") + ". – " +
+                    String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
+  const title = Object.assign(document.createElement("h3"), { textContent: titelText });
+  prev.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() - 7); renderKalenderAnsicht(); };
+  next.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() + 7); renderKalenderAnsicht(); };
+  header.append(prev, title, next);
+  wBox.appendChild(header);
+
+  const heute = heuteIso();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(wochenStartDatum);
+    d.setDate(d.getDate() + i);
+    const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    const block = document.createElement("div");
+    block.className = "week-day-block";
+
+    const row = document.createElement("div");
+    row.className = "week-day-title" + (iso === heute ? " today-text" : "");
+    row.innerHTML = "<span>" + WOCHENTAGE[i] + ", " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".</span>";
+    if (user.canWrite) {
+      const plus = Object.assign(document.createElement("span"), { textContent: "+ Termin", style: "color:var(--blue);cursor:pointer;font-size:12px;" });
+      plus.onclick = () => oeffneTerminFormular(iso);
+      row.appendChild(plus);
+    }
+    block.appendChild(row);
+
+    const liste = termine.filter(x => x.datum === iso);
+    if (liste.length === 0) {
+      block.appendChild(Object.assign(document.createElement("div"), { style: "font-size:13px;color:#94a3b8;", textContent: "Keine Termine" }));
+    } else {
+      liste.forEach(x => block.appendChild(erstelleKarte(x, user)));
+    }
+    wBox.appendChild(block);
+  }
+  container.appendChild(wBox);
 }
-nav.appendChild(navProfil);
-app.appendChild(nav);
-if (typeof ladeTermine === "function") ladeTermine();
+
+function erstelleKarte(t, user) {
+  const dStr = t.datum || "";
+  const tag = dStr.slice(8, 10) || "--";
+  const mon = MONATE_KURZ[parseInt(dStr.slice(5, 7), 10) - 1] || "---";
+  const card = document.createElement("div");
+  card.className = "event-card";
+  const del = user.canWrite ? `<button type="button" class="btn-delete-small" onclick="loescheTermin('${t.id}')">Löschen</button>` : "";
+  const zeitText = t.endzeit ? `${t.uhrzeit} – ${t.endzeit} Uhr` : `${t.uhrzeit} Uhr`;
+
+  card.innerHTML = `
+    <div class="date-badge"><div class="day">${tag}</div><div class="month">${mon}</div></div>
+    <div class="event-content">
+      <span class="team-tag">${t.mannschaft}</span>
+      <h3 class="event-title">${t.titel}</h3>
+      <div class="event-meta"><span>🕒 ${zeitText}</span>${t.ort ? "<span>📍 " + t.ort + "</span>" : ""}</div>
+      ${t.info ? '<div class="event-note">' + t.info + '</div>' : ""}
+      ${del}
+    </div>`;
+  return card;
 }
-(async function initApp() {
-const saved = localStorage.getItem("tsv_user_data");
-if (saved) {
+
+async function ladeTermine(stillesUpdate = false) {
+  const listeDiv = document.getElementById("termine-liste");
+  const user = getAktuellerUser();
+  if (!user || !listeDiv) return;
+
+  if (!stillesUpdate) renderKalenderAnsicht();
+
+  try {
+    const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
+    const response = await fetch(url);
+    if (response.status === 401) return;
+
+    const data = await response.json();
+    const neuerStand = JSON.stringify(data || {});
+
+    if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
+      aktuellerDatenStand = neuerStand;
+      alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
+      alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
+      renderKalenderAnsicht();
+    }
+starteLiveSync(user);
+} catch (err) {}
+}
+function starteLiveSync(user) {
+if (liveStream) return;
 try {
-let user = await refreshSessionToken(JSON.parse(saved));
-if (user) { renderDashboard(user); return; }
+liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
+liveStream.addEventListener("put", () => ladeTermine(true));
+liveStream.addEventListener("patch", () => ladeTermine(true));
+liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
 } catch (e) {}
 }
-renderLogin();
-})();
+setInterval(() => {
+if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
+}, 10000);
+// Hilfsfunktion: Tage zu einem Datum (YYYY-MM-DD) addieren
+function addiereTage(isoDatum, tage) {
+const teile = isoDatum.split("-");
+const d = new Date(parseInt(teile[0], 10), parseInt(teile[1], 10) - 1, parseInt(teile[2], 10));
+d.setDate(d.getDate() + tage);
+return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+async function speichereTermin() {
+const user = getAktuellerUser();
+if (!user || !user.canWrite) return;
+const titel = document.getElementById("termin-titel").value.trim();
+const datum = document.getElementById("termin-datum").value;
+const uhrzeit = document.getElementById("termin-uhrzeit").value;
+const endzeit = document.getElementById("termin-ende").value;
+const mannschaft = document.getElementById("termin-team").value;
+const wdh = parseInt(document.getElementById("termin-wdh").value, 10) || 1;
+const ort = document.getElementById("termin-ort").value.trim();
+const info = document.getElementById("termin-info").value.trim();
+const msg = document.getElementById("termin-msg");
+if (!titel || !datum || !uhrzeit || !mannschaft) {
+msg.style.color = "#dc2626";
+msg.textContent = "Bitte Titel, Datum, Beginn und Mannschaft ausfüllen!";
+return;
+}
+msg.style.color = "#475569";
+msg.textContent = wdh > 1 ? Speichere ${wdh} wöchentliche Termine... : "Speichere Termin...";
+try {
+for (let i = 0; i < wdh; i++) {
+const terminDatum = addiereTage(datum, i * 7);
+const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({
+titel,
+datum: terminDatum,
+uhrzeit,
+endzeit,
+mannschaft,
+ort,
+info,
+erstelltVon: user.email
+})
+});
+if (!response.ok) throw new Error("Status " + response.status);
+}
+document.getElementById("termin-titel").value = "";
+document.getElementById("termin-uhrzeit").value = "";
+document.getElementById("termin-ende").value = "";
+document.getElementById("termin-ort").value = "";
+document.getElementById("termin-info").value = "";
+document.getElementById("termin-wdh").value = "1";
+document.getElementById("termin-modal").classList.add("hidden");
+msg.textContent = "";
+ausgewaehltesDatum = datum;
+ladeTermine(true);
+} catch (err) {
+msg.style.color = "#dc2626";
+msg.textContent = "Fehler: " + err.message;
+}
+}
+async function loescheTermin(id) {
+if (!confirm("Diesen Termin wirklich löschen?")) return;
+const user = getAktuellerUser();
+if (!user) return;
+await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
+ladeTermine(true);
+}
