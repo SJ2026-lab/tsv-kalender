@@ -5,6 +5,8 @@ const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
 const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
+let aktiverMannschaftsFilter = "ALLE";
+
 function el(tag, props) {
   const node = document.createElement(tag);
   if (props) Object.assign(node, props);
@@ -83,15 +85,13 @@ async function loadUserProfile(uid, idToken) {
   } catch (e) { return null; }
 }
 
-function makeBanner(title, sub) {
-  const b = el("div", { className: "top-banner" });
-  b.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>' + title + '</h1><p style="color:#cbd5e1;">' + sub + '</p></div></div>';
-  return b;
-}
-
 function renderLogin() {
   const app = document.getElementById("app");
   app.innerHTML = "";
+
+  const head = el("div", { className: "app-header" });
+  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
+
   const box = el("div", { className: "box" });
   box.innerHTML = "<h2>Willkommen zurück</h2>";
 
@@ -120,12 +120,16 @@ function renderLogin() {
 
   toRegBtn.onclick = () => renderRegister();
   box.append(emailIn, passIn, loginBtn, toRegBtn, errP);
-  app.append(makeBanner("TSV Kalender", "Vereins- & Mannschaftstermine"), box);
+  app.append(head, box);
 }
 
 function renderRegister() {
   const app = document.getElementById("app");
   app.innerHTML = "";
+
+  const head = el("div", { className: "app-header" });
+  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
+
   const box = el("div", { className: "box" });
   box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
@@ -161,53 +165,127 @@ function renderRegister() {
 
   backBtn.onclick = () => renderLogin();
   box.append(clubIn, roleSel, teamSel, emailIn, passIn, regBtn, backBtn, errP);
-  app.append(makeBanner("Mitglied werden", "Einmalige Registrierung"), box);
+  app.append(head, box);
 }
 
 function renderDashboard(user) {
   const app = document.getElementById("app");
   app.innerHTML = "";
-
-  const banner = makeBanner("TSV Termine", user.email);
-  const logoutBtn = el("button", { type: "button", className: "btn-logout", textContent: "Abmelden" });
-  logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
-  banner.appendChild(logoutBtn);
-
   const perms = getPermissions(user.role);
-  const pill = el("div", { className: "profile-pill-bar" });
-  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span> ' : '') +
+
+  // 1. Kompakter Header
+  const head = el("div", { className: "app-header" });
+  head.innerHTML = `
+    <div class="brand">
+      <div class="club-crest">TSV</div>
+      <div><h1>TSV Termine</h1><p>${user.team ? user.team : "Gesamtverein"}</p></div>
+    </div>
+    <span class="role-pill-mini">${user.role}</span>
+  `;
+  app.appendChild(head);
+
+  // 2. Wischbare Mannschafts-Chips
+  const chipRow = el("div", { className: "chips-scroll" });
+  const alleChips = ["ALLE", ...MANNSCHAFTEN];
+  alleChips.forEach(team => {
+    const btn = el("button", {
+      type: "button",
+      className: "chip" + (aktiverMannschaftsFilter === team ? " active" : ""),
+      textContent: team === "ALLE" ? "Alle" : team
+    });
+    btn.onclick = () => {
+      aktiverMannschaftsFilter = team;
+      chipRow.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+      btn.classList.add("active");
+      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+    };
+    chipRow.appendChild(btn);
+  });
+  app.appendChild(chipRow);
+
+  // 3. Hauptbereiche (Kalender & Profil)
+  const kalenderBereich = el("div", { id: "termine-liste" });
+  const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
+
+  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span>' : '') +
                  (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
-  pill.innerHTML = '<div style="font-size:13px;"><strong>' + user.role + '</strong>' + (user.team ? ' • ' + user.team : '') + '</div><div>' + badges + '</div>';
-  app.append(banner, pill);
+  profilBereich.innerHTML = `
+    <h2>Mein Vereinsprofil</h2>
+    <p style="font-size:14px;margin:0 0 8px;"><strong>E-Mail:</strong> ${user.email}</p>
+    <p style="font-size:14px;margin:0 0 8px;"><strong>Funktion:</strong> ${user.role}</p>
+    ${user.team ? `<p style="font-size:14px;margin:0 0 12px;"><strong>Mannschaft:</strong> ${user.team}</p>` : ""}
+    <div style="margin-bottom:20px;">${badges}</div>
+  `;
+  const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
+  logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
+  profilBereich.appendChild(logoutBtn);
 
+  app.append(kalenderBereich, profilBereich);
+
+  // 4. Slide-Up Modal für neue Termine (nur Trainer & Admins)
   if (perms.canWrite) {
-    const toggleBtn = el("button", { type: "button", className: "btn-success", textContent: "+ Neuen Termin eintragen" });
-    const formPanel = el("div", { className: "form-panel hidden" });
-    formPanel.id = "termin-formular";
-
-    const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
-    const teamSel = el("select", { id: "termin-team" });
-    teamSel.innerHTML = '<option value="Alle Mannschaften">Alle Mannschaften</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-    const datumIn = feld("date", "termin-datum", "");
-    const zeitIn = feld("time", "termin-uhrzeit", "");
-    const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
-    const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
-    const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
-    const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
-
-    saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
-    toggleBtn.onclick = () => formPanel.classList.toggle("hidden");
-    formPanel.append(titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
-    app.append(toggleBtn, formPanel);
-  }
-
-  const filterBar = el("div", { className: "filter-bar" });
-  const filterSel = el("select", { id: "filter-team" });
-  filterSel.innerHTML = '<option value="ALLE">Alle Termine anzeigen</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
-filterSel.onchange = () => { if (typeof ladeTermine === "function") ladeTermine(); };
-filterBar.appendChild(filterSel);
-const liste = el("div", { id: "termine-liste" });
-app.append(filterBar, liste);
+    const backdrop = el("div", { id: "termin-modal", className: "modal-backdrop hidden" });
+const sheet = el("div", { className: "bottom-sheet" });
+sheet.id = "termin-formular";
+const sHead = el("div", { className: "sheet-header" });
+sHead.innerHTML = 'Neuer Termin';
+const closeBtn = el("button", { type: "button", className: "sheet-close", textContent: "×" });
+closeBtn.onclick = () => backdrop.classList.add("hidden");
+sHead.appendChild(closeBtn);
+const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
+const teamSel = el("select", { id: "termin-team" });
+teamSel.innerHTML = 'Alle Mannschaften' + MANNSCHAFTEN.map(m => '' + m + '').join("");
+const datumIn = feld("date", "termin-datum", "");
+const zeitIn = feld("time", "termin-uhrzeit", "");
+const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
+const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
+const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
+const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
+saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
+backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.classList.add("hidden"); };
+sheet.append(sHead, titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
+backdrop.appendChild(sheet);
+app.appendChild(backdrop);
+}
+// 5. Feste App-Navigation unten (Bottom Tab Bar)
+const nav = el("div", { className: "bottom-nav" });
+const navMonat = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Monat' });
+const navWoche = el("button", { type: "button", className: "nav-item", innerHTML: '📋Woche' });
+const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
+function setActiveNav(btn) {
+nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+btn.classList.add("active");
+}
+navMonat.onclick = () => {
+setActiveNav(navMonat);
+profilBereich.classList.add("hidden");
+kalenderBereich.classList.remove("hidden");
+chipRow.classList.remove("hidden");
+if (typeof wechseleAnsicht === "function") wechseleAnsicht("MONAT");
+};
+navWoche.onclick = () => {
+setActiveNav(navWoche);
+profilBereich.classList.add("hidden");
+kalenderBereich.classList.remove("hidden");
+chipRow.classList.remove("hidden");
+if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
+};
+navProfil.onclick = () => {
+setActiveNav(navProfil);
+kalenderBereich.classList.add("hidden");
+chipRow.classList.add("hidden");
+profilBereich.classList.remove("hidden");
+};
+nav.append(navMonat, navWoche);
+if (perms.canWrite) {
+const fab = el("button", { type: "button", className: "nav-fab", textContent: "+" });
+fab.onclick = () => {
+if (typeof oeffneTerminFormular === "function") oeffneTerminFormular("");
+};
+nav.appendChild(fab);
+}
+nav.appendChild(navProfil);
+app.appendChild(nav);
 if (typeof ladeTermine === "function") ladeTermine();
 }
 (async function initApp() {
