@@ -2,8 +2,8 @@ const VEREINS_PASSWORT = "TSV2026";
 const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
 const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 
-const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft", "Vorstand ","Trainer"];
-const ROLLEN = ["Eltern", "Spieler", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
+const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
+const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
 let aktiverMannschaftsFilter = "ALLE";
 
@@ -173,21 +173,12 @@ function renderDashboard(user) {
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
-  // 1. Kompakter Header
   const head = el("div", { className: "app-header" });
-  head.innerHTML = `
-    <div class="brand">
-      <div class="club-crest">TSV</div>
-      <div><h1>TSV Termine</h1><p>${user.team ? user.team : "Gesamtverein"}</p></div>
-    </div>
-    <span class="role-pill-mini">${user.role}</span>
-  `;
+  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
   app.appendChild(head);
 
-  // 2. Wischbare Mannschafts-Chips
   const chipRow = el("div", { className: "chips-scroll" });
-  const alleChips = ["ALLE", ...MANNSCHAFTEN];
-  alleChips.forEach(team => {
+  ["ALLE", ...MANNSCHAFTEN].forEach(team => {
     const btn = el("button", {
       type: "button",
       className: "chip" + (aktiverMannschaftsFilter === team ? " active" : ""),
@@ -203,53 +194,26 @@ function renderDashboard(user) {
   });
   app.appendChild(chipRow);
 
-  // 3. Hauptbereiche (Kalender & Profil)
   const kalenderBereich = el("div", { id: "termine-liste" });
   const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
 
   const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span>' : '') +
                  (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
-  profilBereich.innerHTML = `
-    <h2>Mein Vereinsprofil</h2>
-    <p style="font-size:14px;margin:0 0 8px;"><strong>E-Mail:</strong> ${user.email}</p>
-    <p style="font-size:14px;margin:0 0 8px;"><strong>Funktion:</strong> ${user.role}</p>
-    ${user.team ? `<p style="font-size:14px;margin:0 0 12px;"><strong>Mannschaft:</strong> ${user.team}</p>` : ""}
-    <div style="margin-bottom:20px;">${badges}</div>
-  `;
+  profilBereich.innerHTML = '<h2>Mein Vereinsprofil</h2><p style="font-size:14px;margin:0 0 8px;"><strong>E-Mail:</strong> ' + user.email + '</p><p style="font-size:14px;margin:0 0 8px;"><strong>Funktion:</strong> ' + user.role + '</p>' + (user.team ? '<p style="font-size:14px;margin:0 0 12px;"><strong>Mannschaft:</strong> ' + user.team + '</p>' : '') + '<div style="margin-bottom:20px;">' + badges + '</div>';
   const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
   logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
   profilBereich.appendChild(logoutBtn);
 
   app.append(kalenderBereich, profilBereich);
 
-  // 4. Slide-Up Modal für neue Termine (nur Trainer & Admins)
-  if (perms.canWrite) {
-    const backdrop = el("div", { id: "termin-modal", className: "modal-backdrop hidden" });
-const sheet = el("div", { className: "bottom-sheet" });
-sheet.id = "termin-formular";
-const sHead = el("div", { className: "sheet-header" });
-sHead.innerHTML = 'Neuer Termin';
-const closeBtn = el("button", { type: "button", className: "sheet-close", textContent: "×" });
-closeBtn.onclick = () => backdrop.classList.add("hidden");
-sHead.appendChild(closeBtn);
-const titelIn = feld("text", "termin-titel", "Titel (z. B. Heimspiel oder Training)");
-const teamSel = el("select", { id: "termin-team" });
-teamSel.innerHTML = 'Alle Mannschaften' + MANNSCHAFTEN.map(m => '' + m + '').join("");
-const datumIn = feld("date", "termin-datum", "");
-const zeitIn = feld("time", "termin-uhrzeit", "");
-const ortIn = feld("text", "termin-ort", "Ort / Sportplatz (optional)");
-const infoIn = el("textarea", { id: "termin-info", rows: 2, placeholder: "Zusatzinfos (optional)" });
-const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Termin veröffentlichen" });
-const msgP = el("p", { id: "termin-msg", style: "font-size:13px;font-weight:600;margin:0;" });
-saveBtn.onclick = () => { if (typeof speichereTermin === "function") speichereTermin(); };
-backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.classList.add("hidden"); };
-sheet.append(sHead, titelIn, teamSel, datumIn, zeitIn, ortIn, infoIn, saveBtn, msgP);
-backdrop.appendChild(sheet);
-app.appendChild(backdrop);
-}
-// 5. Feste App-Navigation unten (Bottom Tab Bar)
-const nav = el("div", { className: "bottom-nav" });
-const navMonat = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Monat' });
+  // Termin-Editor aus editor.js aufbauen
+  if (perms.canWrite && typeof baueTerminEditor === "function") {
+    baueTerminEditor(app, MANNSCHAFTEN);
+  }
+
+  // Bottom Navigation
+  const nav = el("div", { className: "bottom-nav" });
+  const navMonat = el("button", { type: "button", className: "nav-item active", innerHTML: '<span class="nav-icon">📅</span><span>Monat</span>' });
 const navWoche = el("button", { type: "button", className: "nav-item", innerHTML: '📋Woche' });
 const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
 function setActiveNav(btn) {
