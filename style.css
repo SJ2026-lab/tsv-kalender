@@ -362,3 +362,156 @@ button {
 .badge-admin { background: #fee2e2; color: #b91c1c; }
 .badge-write { background: #fef3c7; color: #b45309; }
 .badge-read { background: #dcfce7; color: #15803d; }
+/* Kompakte Steuerleiste (Filter + Monat/Woche nebeneinander) */
+.top-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.filter-dropdown-btn {
+  flex: 1;
+  background: var(--card);
+  color: var(--primary);
+  border: 1.5px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-toggle-group {
+  display: flex;
+  background: #e2e8f0;
+  padding: 3px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.view-toggle-btn {
+  width: auto;
+  margin: 0;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.view-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+/* Aufklappbares Mehrfachauswahl-Menü für Mannschaften */
+.filter-popover {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+}
+
+.multi-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.multi-chip {
+  width: auto;
+  margin: 0;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 20px;
+  background: #f1f5f9;
+  color: var(--muted);
+  border: 1.5px solid var(--border);
+}
+
+.multi-chip.selected {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+/* Kompakte Wochenübersicht: 3 Spalten nebeneinander */
+.week-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 380px) {
+  .week-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.week-mini-card {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 110px;
+}
+
+.week-mini-card.today-card {
+  border: 1.5px solid var(--blue);
+  background: #eff6ff;
+}
+
+.week-mini-head {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.week-mini-event {
+  background: white;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 6px;
+  margin-bottom: 5px;
+  font-size: 11px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.week-mini-event .time {
+  font-weight: 800;
+  color: var(--blue);
+  font-size: 10px;
+}
+
+.week-mini-event .title {
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+  margin: 2px 0;
+  word-break: break-word;
+}
+
+.week-mini-event .team {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+}
