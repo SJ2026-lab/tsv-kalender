@@ -53,7 +53,6 @@ function renderKalenderAnsicht() {
   const termine = filterTeam === "ALLE" ? alleTermineCache : alleTermineCache.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
 
   container.innerHTML = "";
-
   if (aktuelleAnsicht === "MONAT") {
     zeigeMonat(container, termine, user);
   } else {
@@ -180,27 +179,23 @@ function erstelleKarte(t, user) {
   const card = document.createElement("div");
   card.className = "event-card";
 
-  const serieBadge = t.serieId ? `<span class="team-tag" style="background:#fef3c7;color:#92400e;margin-left:4px;">🔁 Serie</span>` : "";
-  const zeitText = t.endzeit ? `${t.uhrzeit} – ${t.endzeit} Uhr` : `${t.uhrzeit} Uhr`;
+  const serieBadge = t.serieId ? '<span class="team-tag" style="background:#fef3c7;color:#92400e;margin-left:4px;">🔁 Serie</span>' : "";
+  const zeitText = t.endzeit ? t.uhrzeit + " – " + t.endzeit + " Uhr" : t.uhrzeit + " Uhr";
 
-  card.innerHTML = `
-    <div class="date-badge"><div class="day">${tag}</div><div class="month">${mon}</div></div>
-    <div class="event-content">
-      <div><span class="team-tag">${t.mannschaft}</span>${serieBadge}</div>
-      <h3 class="event-title">${t.titel}</h3>
-      <div class="event-meta"><span>🕒 ${zeitText}</span>${t.ort ? "<span>📍 " + t.ort + "</span>" : ""}</div>
-      ${t.info ? '<div class="event-note">' + t.info + '</div>' : ""}
-    </div>`;
+  card.innerHTML = '<div class="date-badge"><div class="day">' + tag + '</div><div class="month">' + mon + '</div></div>' +
+    '<div class="event-content"><div><span class="team-tag">' + t.mannschaft + '</span>' + serieBadge + '</div>' +
+    '<h3 class="event-title">' + t.titel + '</h3>' +
+    '<div class="event-meta"><span>🕒 ' + zeitText + '</span>' + (t.ort ? '<span>📍 ' + t.ort + '</span>' : '') + '</div>' +
+    (t.info ? '<div class="event-note">' + t.info + '</div>' : '') + '</div>';
 
   if (user.canWrite) {
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "btn-delete-small";
     delBtn.textContent = "Löschen";
-    delBtn.onclick = () => frageTerminLoeschen(t);
+    delBtn.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
     card.querySelector(".event-content").appendChild(delBtn);
   }
-
   return card;
 }
 
@@ -212,16 +207,14 @@ async function ladeTermine(stillesUpdate = false) {
   if (!stillesUpdate) renderKalenderAnsicht();
 
   try {
-    const url = kalenderDbHost + "/termine.json?auth=" + user.idToken;
-    const response = await fetch(url);
+    const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken);
     if (response.status === 401) return;
-
     const data = await response.json();
     const neuerStand = JSON.stringify(data || {});
 
     if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
       aktuellerDatenStand = neuerStand;
-      alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
+alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
 alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
 renderKalenderAnsicht();
 }
@@ -240,132 +233,3 @@ liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = 
 setInterval(() => {
 if (getAktuellerUser() && document.getElementById("termine-liste")) ladeTermine(true);
 }, 10000);
-// Sichere Datumsberechnung ohne Array-Klammern
-function addiereTage(isoDatum, tage) {
-const jahr = parseInt(isoDatum.slice(0, 4), 10);
-const monat = parseInt(isoDatum.slice(5, 7), 10) - 1;
-const tag = parseInt(isoDatum.slice(8, 10), 10);
-const d = new Date(jahr, monat, tag);
-d.setDate(d.getDate() + tage);
-return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-async function speichereTermin() {
-const user = getAktuellerUser();
-if (!user || !user.canWrite) return;
-const titel = document.getElementById("termin-titel").value.trim();
-const datum = document.getElementById("termin-datum").value;
-const uhrzeit = document.getElementById("termin-uhrzeit").value;
-const endzeit = document.getElementById("termin-ende").value;
-const mannschaft = document.getElementById("termin-team").value;
-const wdh = parseInt(document.getElementById("termin-wdh").value, 10) || 1;
-const ort = document.getElementById("termin-ort").value.trim();
-const info = document.getElementById("termin-info").value.trim();
-const msg = document.getElementById("termin-msg");
-if (!titel || !datum || !uhrzeit || !mannschaft) {
-msg.style.color = "#dc2626";
-msg.textContent = "Bitte Titel, Datum, Beginn und Mannschaft ausfüllen!";
-return;
-}
-msg.style.color = "#475569";
-msg.textContent = wdh > 1 ? "Speichere " + wdh + " wöchentliche Termine..." : "Speichere Termin...";
-// Eindeutige Serien-ID vergeben, falls wöchentlich wiederholt wird
-const serieId = wdh > 1 ? "serie_" + Date.now() : "";
-try {
-for (let i = 0; i < wdh; i++) {
-const terminDatum = addiereTage(datum, i * 7);
-const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-titel,
-datum: terminDatum,
-uhrzeit,
-endzeit,
-mannschaft,
-ort,
-info,
-serieId,
-erstelltVon: user.email
-})
-});
-if (!response.ok) throw new Error("Status " + response.status);
-}
-document.getElementById("termin-titel").value = "";
-document.getElementById("termin-uhrzeit").value = "";
-document.getElementById("termin-ende").value = "";
-document.getElementById("termin-ort").value = "";
-document.getElementById("termin-info").value = "";
-document.getElementById("termin-wdh").value = "1";
-document.getElementById("termin-modal").classList.add("hidden");
-msg.textContent = "";
-ausgewaehltesDatum = datum;
-ladeTermine(true);
-} catch (err) {
-msg.style.color = "#dc2626";
-msg.textContent = "Fehler: " + err.message;
-}
-}
-// Lösch-Dialog: Unterscheidet zwischen Einzeltermin und Serientermin
-function frageTerminLoeschen(termin) {
-const user = getAktuellerUser();
-if (!user) return;
-// Prüfen, ob es noch weitere nachfolgende Termine dieser Serie gibt
-const hatNachfolger = termin.serieId && alleTermineCache.some(
-t => t.serieId === termin.serieId && t.datum > termin.datum
-);
-// Wenn es kein Serientermin (oder der letzte einer Serie) ist: normale Bestätigung
-if (!hatNachfolger) {
-if (confirm("Diesen Termin wirklich löschen?")) {
-loescheEinzeltermin(termin.id);
-}
-return;
-}
-// Bei Serientermin: Auswahl-Popup anzeigen
-const backdrop = document.createElement("div");
-backdrop.className = "modal-backdrop";
-const sheet = document.createElement("div");
-sheet.className = "bottom-sheet";
-sheet.innerHTML = <h3 style="margin:0 0 8px;font-size:18px;">Serientermin löschen</h3> <p style="font-size:14px;color:var(--muted);margin:0 0 18px;"> <strong>${termin.titel}</strong> (${termin.mannschaft}) ist ein wöchentlicher Serientermin. Was möchtest du löschen? </p>;
-const btnNurDieser = document.createElement("button");
-btnNurDieser.type = "button";
-btnNurDieser.className = "btn-secondary";
-btnNurDieser.textContent = "Nur diesen einen Termin löschen";
-btnNurDieser.onclick = async () => {
-backdrop.remove();
-await loescheEinzeltermin(termin.id);
-};
-const btnAlleNachfolgenden = document.createElement("button");
-btnAlleNachfolgenden.type = "button";
-btnAlleNachfolgenden.className = "btn-danger";
-btnAlleNachfolgenden.textContent = "Diesen & alle nachfolgenden löschen";
-btnAlleNachfolgenden.onclick = async () => {
-backdrop.remove();
-await loescheNachfolgendeSerientermine(termin);
-};
-const btnAbbrechen = document.createElement("button");
-btnAbbrechen.type = "button";
-btnAbbrechen.style.cssText = "background:transparent;color:var(--muted);margin-bottom:0;";
-btnAbbrechen.textContent = "Abbrechen";
-btnAbbrechen.onclick = () => backdrop.remove();
-backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
-sheet.append(btnNurDieser, btnAlleNachfolgenden, btnAbbrechen);
-backdrop.appendChild(sheet);
-document.body.appendChild(backdrop);
-}
-async function loescheEinzeltermin(id) {
-const user = getAktuellerUser();
-if (!user) return;
-await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
-ladeTermine(true);
-}
-async function loescheNachfolgendeSerientermine(startTermin) {
-const user = getAktuellerUser();
-if (!user) return;
-const zuLoeschen = alleTermineCache.filter(
-t => t.serieId === startTermin.serieId && t.datum >= startTermin.datum
-);
-for (const t of zuLoeschen) {
-await fetch(kalenderDbHost + "/termine/" + t.id + ".json?auth=" + user.idToken, { method: "DELETE" });
-}
-ladeTermine(true);
-}
