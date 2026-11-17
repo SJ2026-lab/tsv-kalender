@@ -2,8 +2,8 @@ const VEREINS_PASSWORT = "TSV2026";
 const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
 const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 
-const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
-const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
+const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft", "Vorstand ","Trainer"];
+const ROLLEN = ["Eltern", "Spieler", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
 let aktiverMannschaftsFilter = "ALLE";
 
