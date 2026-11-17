@@ -1,17 +1,17 @@
-const kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
-const MONATE_LANG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-const MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
-const WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+var kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
+var MONATE_LANG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+var MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
+var WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
-let alleTermineCache = [];
-let aktuellerDatenStand = "";
-let liveStream = null;
+var alleTermineCache = [];
+var aktuellerDatenStand = "";
+var liveStream = null;
 
-let aktuelleAnsicht = "MONAT";
-let ausgewaehltesDatum = heuteIso();
-let ansichtJahr = new Date().getFullYear();
-let ansichtMonat = new Date().getMonth();
-let wochenStartDatum = getMontag(new Date());
+var aktuelleAnsicht = "MONAT";
+var ausgewaehltesDatum = heuteIso();
+var ansichtJahr = new Date().getFullYear();
+var ansichtMonat = new Date().getMonth();
+var wochenStartDatum = getMontag(new Date());
 
 function heuteIso() {
   const d = new Date();
@@ -44,15 +44,23 @@ function oeffneTerminFormular(iso) {
   }
 }
 
+function filtereNachAuswahl(termineListe) {
+  if (typeof ausgewaehlteMannschaften === "undefined" || ausgewaehlteMannschaften.length === 0) {
+    return termineListe;
+  }
+  return termineListe.filter(t =>
+    t.mannschaft === "Alle Mannschaften" || ausgewaehlteMannschaften.includes(t.mannschaft)
+  );
+}
+
 function renderKalenderAnsicht() {
   const container = document.getElementById("termine-liste");
   const user = getAktuellerUser();
   if (!container || !user) return;
 
-  const filterTeam = typeof aktiverMannschaftsFilter !== "undefined" ? aktiverMannschaftsFilter : "ALLE";
-  const termine = filterTeam === "ALLE" ? alleTermineCache : alleTermineCache.filter(t => t.mannschaft === filterTeam || t.mannschaft === "Alle Mannschaften");
-
+  const termine = filtereNachAuswahl(alleTermineCache);
   container.innerHTML = "";
+
   if (aktuelleAnsicht === "MONAT") {
     zeigeMonat(container, termine, user);
   } else {
@@ -128,6 +136,7 @@ function zeigeMonat(container, termine, user) {
 function zeigeWoche(container, termine, user) {
   const wBox = document.createElement("div");
   wBox.className = "box";
+  wBox.style.padding = "14px";
   const ende = new Date(wochenStartDatum);
   ende.setDate(ende.getDate() + 6);
 
@@ -143,32 +152,61 @@ function zeigeWoche(container, termine, user) {
   header.append(prev, title, next);
   wBox.appendChild(header);
 
+  const grid3 = document.createElement("div");
+  grid3.className = "week-grid-3";
   const heute = heuteIso();
+
   for (let i = 0; i < 7; i++) {
     const d = new Date(wochenStartDatum);
     d.setDate(d.getDate() + i);
     const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-    const block = document.createElement("div");
-    block.className = "week-day-block";
 
-    const row = document.createElement("div");
-    row.className = "week-day-title" + (iso === heute ? " today-text" : "");
-    row.innerHTML = "<span>" + WOCHENTAGE[i] + ", " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".</span>";
+    const miniCard = document.createElement("div");
+    miniCard.className = "week-mini-card" + (iso === heute ? " today-card" : "");
+
+    const headRow = document.createElement("div");
+    headRow.className = "week-mini-head";
+    headRow.innerHTML = '<span>' + WOCHENTAGE[i] + ' ' + String(d.getDate()).padStart(2, "0") + '.' + String(d.getMonth() + 1).padStart(2, "0") + '.</span>';
+
     if (user.canWrite) {
-      const plus = Object.assign(document.createElement("span"), { textContent: "+ Termin", style: "color:var(--blue);cursor:pointer;font-size:12px;" });
+      const plus = document.createElement("span");
+      plus.textContent = "+";
+      plus.style.cssText = "color:var(--blue);font-size:15px;cursor:pointer;padding:0 3px;";
       plus.onclick = () => oeffneTerminFormular(iso);
-      row.appendChild(plus);
+      headRow.appendChild(plus);
     }
-    block.appendChild(row);
+    miniCard.appendChild(headRow);
 
-    const liste = termine.filter(x => x.datum === iso);
-    if (liste.length === 0) {
-      block.appendChild(Object.assign(document.createElement("div"), { style: "font-size:13px;color:#94a3b8;", textContent: "Keine Termine" }));
+    const tagesTermine = termine.filter(x => x.datum === iso);
+    if (tagesTermine.length === 0) {
+      const leer = document.createElement("div");
+      leer.style.cssText = "font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;";
+      leer.textContent = "Frei";
+      miniCard.appendChild(leer);
     } else {
-      liste.forEach(x => block.appendChild(erstelleKarte(x, user)));
+      tagesTermine.forEach(t => {
+        const ev = document.createElement("div");
+        ev.className = "week-mini-event";
+        ev.innerHTML = '<div class="time">' + t.uhrzeit + (t.endzeit ? '-' + t.endzeit : '') + '</div>' +
+                       '<div class="title">' + t.titel + '</div>' +
+                       '<div class="team">' + t.mannschaft + '</div>';
+        ev.onclick = () => {
+          ausgewaehltesDatum = iso;
+          const topBtns = document.querySelectorAll(".view-toggle-btn");
+          if (topBtns.length >= 2) {
+            topBtns[0].classList.add("active");
+            topBtns[1].classList.remove("active");
+          }
+          wechseleAnsicht("MONAT");
+        };
+        miniCard.appendChild(ev);
+      });
     }
-    wBox.appendChild(block);
+
+    grid3.appendChild(miniCard);
   }
+
+  wBox.appendChild(grid3);
   container.appendChild(wBox);
 }
 
@@ -186,34 +224,29 @@ function erstelleKarte(t, user) {
     '<div class="event-content"><div><span class="team-tag">' + t.mannschaft + '</span>' + serieBadge + '</div>' +
     '<h3 class="event-title">' + t.titel + '</h3>' +
     '<div class="event-meta"><span>🕒 ' + zeitText + '</span>' + (t.ort ? '<span>📍 ' + t.ort + '</span>' : '') + '</div>' +
-    (t.info ? '<div class="event-note">' + t.info + '</div>' : '') + '</div>';
-
-  if (user.canWrite) {
-    const delBtn = document.createElement("button");
-    delBtn.type = "button";
-    delBtn.className = "btn-delete-small";
-    delBtn.textContent = "Löschen";
-    delBtn.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
-    card.querySelector(".event-content").appendChild(delBtn);
-  }
-  return card;
+(t.info ? '' + t.info + '' : '') + '';
+if (user.canWrite) {
+const delBtn = document.createElement("button");
+delBtn.type = "button";
+delBtn.className = "btn-delete-small";
+delBtn.textContent = "Löschen";
+delBtn.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
+card.querySelector(".event-content").appendChild(delBtn);
 }
-
+return card;
+}
 async function ladeTermine(stillesUpdate = false) {
-  const listeDiv = document.getElementById("termine-liste");
-  const user = getAktuellerUser();
-  if (!user || !listeDiv) return;
-
-  if (!stillesUpdate) renderKalenderAnsicht();
-
-  try {
-    const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken);
-    if (response.status === 401) return;
-    const data = await response.json();
-    const neuerStand = JSON.stringify(data || {});
-
-    if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
-      aktuellerDatenStand = neuerStand;
+const listeDiv = document.getElementById("termine-liste");
+const user = getAktuellerUser();
+if (!user || !listeDiv) return;
+if (!stillesUpdate) renderKalenderAnsicht();
+try {
+const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken);
+if (response.status === 401) return;
+const data = await response.json();
+const neuerStand = JSON.stringify(data || {});
+if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
+aktuellerDatenStand = neuerStand;
 alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
 alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
 renderKalenderAnsicht();
