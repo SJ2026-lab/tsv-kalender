@@ -5,7 +5,8 @@ const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
 const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
-let aktiverMannschaftsFilter = "ALLE";
+// Gespeicherte Mehrfachauswahl laden (leer = Alle Mannschaften)
+let ausgewaehlteMannschaften = JSON.parse(localStorage.getItem("tsv_team_filter") || "[]");
 
 function el(tag, props) {
   const node = document.createElement(tag);
@@ -178,77 +179,140 @@ function renderRegister() {
   app.append(head, box);
 }
 
+function getFilterButtonText() {
+  if (!ausgewaehlteMannschaften || ausgewaehlteMannschaften.length === 0) {
+    return "Alle Mannschaften";
+  }
+  if (ausgewaehlteMannschaften.length <= 2) {
+    return ausgewaehlteMannschaften.join(", ");
+  }
+  return ausgewaehlteMannschaften.length + " Mannschaften";
+}
+
 function renderDashboard(user) {
   const app = document.getElementById("app");
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
+  // 1. Kompakter Header
   const head = el("div", { className: "app-header" });
   head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
   app.appendChild(head);
 
-  const chipRow = el("div", { className: "chips-scroll" });
-  ["ALLE", ...MANNSCHAFTEN].forEach(team => {
-    const btn = el("button", {
+  // 2. Steuerleiste: Links Mehrfach-Filter "Alle ▾", rechts Umschalter "Monat | Woche"
+  const controlsBar = el("div", { id: "top-controls-bar", className: "top-controls" });
+
+  const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
+  filterBtn.innerHTML = '<span id="filter-btn-label">' + getFilterButtonText() + '</span><span>▾</span>';
+
+  const viewGroup = el("div", { className: "view-toggle-group" });
+  const topBtnMonat = el("button", { type: "button", className: "view-toggle-btn active", textContent: "Monat" });
+  const topBtnWoche = el("button", { type: "button", className: "view-toggle-btn", textContent: "Woche" });
+  viewGroup.append(topBtnMonat, topBtnWoche);
+
+  controlsBar.append(filterBtn, viewGroup);
+  app.appendChild(controlsBar);
+
+  // 3. Aufklappbare Mehrfachauswahl-Box (unter "Alle" versteckt)
+  const filterPopover = el("div", { className: "filter-popover hidden" });
+  filterPopover.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):</div>';
+
+  const chipGrid = el("div", { className: "multi-chip-grid" });
+
+  function aktualisiereFilterChips() {
+    chipGrid.innerHTML = "";
+    const btnAlle = el("button", {
       type: "button",
-      className: "chip" + (aktiverMannschaftsFilter === team ? " active" : ""),
-      textContent: team === "ALLE" ? "Alle" : team
+      className: "multi-chip" + (ausgewaehlteMannschaften.length === 0 ? " selected" : ""),
+      textContent: "✓ Alle anzeigen"
     });
-    btn.onclick = () => {
-      aktiverMannschaftsFilter = team;
-      chipRow.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-      btn.classList.add("active");
-      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
-    };
-    chipRow.appendChild(btn);
-  });
-  app.appendChild(chipRow);
-
-  const kalenderBereich = el("div", { id: "termine-liste" });
-  const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
-
-  const badges = (perms.isAdmin ? '<span class="badge badge-admin">Admin</span>' : '') +
-                 (perms.canWrite ? '<span class="badge badge-write">Lesen & Schreiben</span>' : '<span class="badge badge-read">Nur Lesen</span>');
-  profilBereich.innerHTML = '<h2>Mein Vereinsprofil</h2><p style="font-size:14px;margin:0 0 8px;"><strong>E-Mail:</strong> ' + user.email + '</p><p style="font-size:14px;margin:0 0 8px;"><strong>Funktion:</strong> ' + user.role + '</p>' + (user.team ? '<p style="font-size:14px;margin:0 0 12px;"><strong>Mannschaft:</strong> ' + user.team + '</p>' : '') + '<div style="margin-bottom:20px;">' + badges + '</div>';
-  const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
-  logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
-  profilBereich.appendChild(logoutBtn);
-
-  app.append(kalenderBereich, profilBereich);
-
-  if (perms.canWrite && typeof baueTerminEditor === "function") {
-    baueTerminEditor(app, MANNSCHAFTEN);
-  }
-
-  const nav = el("div", { className: "bottom-nav" });
-  const navMonat = el("button", { type: "button", className: "nav-item active", innerHTML: '<span class="nav-icon">📅</span><span>Monat</span>' });
-  const navWoche = el("button", { type: "button", className: "nav-item", innerHTML: '📋Woche' });
-const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
-function setActiveNav(btn) {
-nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
-btn.classList.add("active");
-}
-navMonat.onclick = () => {
-setActiveNav(navMonat);
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-chipRow.classList.remove("hidden");
-if (typeof wechseleAnsicht === "function") wechseleAnsicht("MONAT");
+    btnAlle.onclick = () => {
+      ausgewaehlteMannschaften = [];
+      localStorage.setItem("tsv_team_filter", "[]");
+document.getElementById("filter-btn-label").textContent = getFilterButtonText();
+aktualisiereFilterChips();
+if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
 };
-navWoche.onclick = () => {
-setActiveNav(navWoche);
+chipGrid.appendChild(btnAlle);
+MANNSCHAFTEN.forEach(team => {
+const istAktiv = ausgewaehlteMannschaften.includes(team);
+const cBtn = el("button", {
+type: "button",
+className: "multi-chip" + (istAktiv ? " selected" : ""),
+textContent: (istAktiv ? "✓ " : "") + team
+});
+cBtn.onclick = () => {
+if (ausgewaehlteMannschaften.includes(team)) {
+ausgewaehlteMannschaften = ausgewaehlteMannschaften.filter(t => t !== team);
+} else {
+ausgewaehlteMannschaften.push(team);
+}
+localStorage.setItem("tsv_team_filter", JSON.stringify(ausgewaehlteMannschaften));
+document.getElementById("filter-btn-label").textContent = getFilterButtonText();
+aktualisiereFilterChips();
+if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+};
+chipGrid.appendChild(cBtn);
+});
+}
+aktualisiereFilterChips();
+const closeFilterBtn = el("button", { type: "button", className: "btn-success", style: "padding:10px;margin:0;font-size:13px;", textContent: "Auswahl übernehmen" });
+closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
+filterPopover.append(chipGrid, closeFilterBtn);
+app.appendChild(filterPopover);
+filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
+// 4. Hauptbereiche (Kalender & Profil)
+const kalenderBereich = el("div", { id: "termine-liste" });
+const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
+const badges = (perms.isAdmin ? 'Admin' : '') +
+(perms.canWrite ? 'Lesen & Schreiben' : 'Nur Lesen');
+profilBereich.innerHTML = 'Mein VereinsprofilE-Mail: ' + user.email + 'Funktion: ' + user.role + '' + (user.team ? 'Mannschaft: ' + user.team + '' : '') + '' + badges + '';
+const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
+logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
+profilBereich.appendChild(logoutBtn);
+app.append(kalenderBereich, profilBereich);
+if (perms.canWrite && typeof baueTerminEditor === "function") {
+baueTerminEditor(app, MANNSCHAFTEN);
+}
+// 5. Feste Bottom-Navigation
+const nav = el("div", { className: "bottom-nav" });
+const navKalender = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Kalender' });
+const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
+function aktiviereMonat() {
+topBtnMonat.classList.add("active");
+topBtnWoche.classList.remove("active");
 profilBereich.classList.add("hidden");
 kalenderBereich.classList.remove("hidden");
-chipRow.classList.remove("hidden");
+controlsBar.classList.remove("hidden");
+if (typeof wechseleAnsicht === "function") wechseleAnsicht("MONAT");
+}
+function aktiviereWoche() {
+topBtnWoche.classList.add("active");
+topBtnMonat.classList.remove("active");
+profilBereich.classList.add("hidden");
+kalenderBereich.classList.remove("hidden");
+controlsBar.classList.remove("hidden");
+filterPopover.classList.add("hidden");
 if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
+}
+topBtnMonat.onclick = aktiviereMonat;
+topBtnWoche.onclick = aktiviereWoche;
+navKalender.onclick = () => {
+navKalender.classList.add("active");
+navProfil.classList.remove("active");
+profilBereich.classList.add("hidden");
+kalenderBereich.classList.remove("hidden");
+controlsBar.classList.remove("hidden");
 };
 navProfil.onclick = () => {
-setActiveNav(navProfil);
+navProfil.classList.add("active");
+navKalender.classList.remove("active");
 kalenderBereich.classList.add("hidden");
-chipRow.classList.add("hidden");
+controlsBar.classList.add("hidden");
+filterPopover.classList.add("hidden");
 profilBereich.classList.remove("hidden");
 };
-nav.append(navMonat, navWoche);
+nav.append(navKalender);
 if (perms.canWrite) {
 const fab = el("button", { type: "button", className: "nav-fab", textContent: "+" });
 fab.onclick = () => {
