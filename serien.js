@@ -11,6 +11,7 @@ async function speichereTermin() {
   const user = getAktuellerUser();
   if (!user || !user.canWrite) return;
 
+  const st = window.tsvCalState;
   const titel = document.getElementById("termin-titel").value.trim();
   const datum = document.getElementById("termin-datum").value;
   const uhrzeit = document.getElementById("termin-uhrzeit").value;
@@ -34,7 +35,7 @@ async function speichereTermin() {
   try {
     for (let i = 0; i < wdh; i++) {
       const terminDatum = addiereTage(datum, i * 7);
-      const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken, {
+      const response = await fetch(st.dbHost + "/termine.json?auth=" + user.idToken, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ titel, datum: terminDatum, uhrzeit, endzeit, mannschaft, ort, info, serieId, erstelltVon: user.email })
@@ -51,7 +52,7 @@ async function speichereTermin() {
     document.getElementById("termin-modal").classList.add("hidden");
     msg.textContent = "";
 
-    ausgewaehltesDatum = datum;
+    st.gewaehltesDatum = datum;
     ladeTermine(true);
   } catch (err) {
     msg.style.color = "#dc2626";
@@ -63,7 +64,8 @@ function frageTerminLoeschen(termin) {
   const user = getAktuellerUser();
   if (!user) return;
 
-  const hatNachfolger = termin.serieId && alleTermineCache.some(t => t.serieId === termin.serieId && t.datum > termin.datum);
+  const st = window.tsvCalState;
+  const hatNachfolger = termin.serieId && st.termine.some(t => t.serieId === termin.serieId && t.datum > termin.datum);
 
   if (!hatNachfolger) {
     if (confirm("Diesen Termin wirklich löschen?")) {
@@ -99,16 +101,17 @@ function frageTerminLoeschen(termin) {
 async function loescheEinzeltermin(id) {
   const user = getAktuellerUser();
   if (!user) return;
-  await fetch(kalenderDbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
+  await fetch(window.tsvCalState.dbHost + "/termine/" + id + ".json?auth=" + user.idToken, { method: "DELETE" });
   ladeTermine(true);
 }
 
 async function loescheNachfolgendeSerientermine(startTermin) {
   const user = getAktuellerUser();
   if (!user) return;
-  const zuLoeschen = alleTermineCache.filter(t => t.serieId === startTermin.serieId && t.datum >= startTermin.datum);
+  const st = window.tsvCalState;
+  const zuLoeschen = st.termine.filter(t => t.serieId === startTermin.serieId && t.datum >= startTermin.datum);
   for (const t of zuLoeschen) {
-    await fetch(kalenderDbHost + "/termine/" + t.id + ".json?auth=" + user.idToken, { method: "DELETE" });
+    await fetch(st.dbHost + "/termine/" + t.id + ".json?auth=" + user.idToken, { method: "DELETE" });
   }
   ladeTermine(true);
 }
