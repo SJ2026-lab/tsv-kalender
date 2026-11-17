@@ -1,17 +1,17 @@
-var kalenderDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
-var MONATE_LANG = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
-var MONATE_KURZ = ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"];
-var WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
-
-var alleTermineCache = [];
-var aktuellerDatenStand = "";
-var liveStream = null;
-
-var aktuelleAnsicht = "MONAT";
-var ausgewaehltesDatum = heuteIso();
-var ansichtJahr = new Date().getFullYear();
-var ansichtMonat = new Date().getMonth();
-var wochenStartDatum = getMontag(new Date());
+window.tsvCalState = {
+  dbHost: "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app",
+  monateLang: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
+  monateKurz: ["JAN", "FEB", "MÄR", "APR", "MAI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DEZ"],
+  wochentage: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+  termine: [],
+  datenStand: "",
+  liveStream: null,
+  ansicht: "MONAT",
+  gewaehltesDatum: new Date().toISOString().slice(0, 10),
+  jahr: new Date().getFullYear(),
+  monat: new Date().getMonth(),
+  wochenStart: getMontag(new Date())
+};
 
 function heuteIso() {
   const d = new Date();
@@ -31,7 +31,7 @@ function getAktuellerUser() {
 }
 
 function wechseleAnsicht(modus) {
-  aktuelleAnsicht = modus;
+  window.tsvCalState.ansicht = modus;
   renderKalenderAnsicht();
 }
 
@@ -58,10 +58,10 @@ function renderKalenderAnsicht() {
   const user = getAktuellerUser();
   if (!container || !user) return;
 
-  const termine = filtereNachAuswahl(alleTermineCache);
+  const termine = filtereNachAuswahl(window.tsvCalState.termine);
   container.innerHTML = "";
 
-  if (aktuelleAnsicht === "MONAT") {
+  if (window.tsvCalState.ansicht === "MONAT") {
     zeigeMonat(container, termine, user);
   } else {
     zeigeWoche(container, termine, user);
@@ -69,6 +69,7 @@ function renderKalenderAnsicht() {
 }
 
 function zeigeMonat(container, termine, user) {
+  const st = window.tsvCalState;
   const calBox = document.createElement("div");
   calBox.className = "box";
   calBox.style.marginBottom = "14px";
@@ -77,34 +78,34 @@ function zeigeMonat(container, termine, user) {
   header.className = "cal-header";
   const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
   const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
-  const title = Object.assign(document.createElement("h3"), { textContent: MONATE_LANG[ansichtMonat] + " " + ansichtJahr });
-  prev.onclick = () => { ansichtMonat--; if (ansichtMonat < 0) { ansichtMonat = 11; ansichtJahr--; } renderKalenderAnsicht(); };
-  next.onclick = () => { ansichtMonat++; if (ansichtMonat > 11) { ansichtMonat = 0; ansichtJahr++; } renderKalenderAnsicht(); };
+  const title = Object.assign(document.createElement("h3"), { textContent: st.monateLang[st.monat] + " " + st.jahr });
+  prev.onclick = () => { st.monat--; if (st.monat < 0) { st.monat = 11; st.jahr--; } renderKalenderAnsicht(); };
+  next.onclick = () => { st.monat++; if (st.monat > 11) { st.monat = 0; st.jahr++; } renderKalenderAnsicht(); };
   header.append(prev, title, next);
   calBox.appendChild(header);
 
   const wd = document.createElement("div");
   wd.className = "cal-weekdays";
-  wd.innerHTML = WOCHENTAGE.map(w => "<div>" + w + "</div>").join("");
+  wd.innerHTML = st.wochentage.map(w => "<div>" + w + "</div>").join("");
   calBox.appendChild(wd);
 
   const grid = document.createElement("div");
   grid.className = "cal-grid";
-  let start = new Date(ansichtJahr, ansichtMonat, 1).getDay();
+  let start = new Date(st.jahr, st.monat, 1).getDay();
   start = start === 0 ? 6 : start - 1;
-  const tage = new Date(ansichtJahr, ansichtMonat + 1, 0).getDate();
+  const tage = new Date(st.jahr, st.monat + 1, 0).getDate();
   const heute = heuteIso();
 
   for (let i = 0; i < start; i++) grid.appendChild(Object.assign(document.createElement("div"), { className: "cal-day empty" }));
 
   for (let t = 1; t <= tage; t++) {
-    const iso = ansichtJahr + "-" + String(ansichtMonat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
+    const iso = st.jahr + "-" + String(st.monat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
     const count = termine.filter(x => x.datum === iso).length;
     const cell = document.createElement("div");
-    cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === ausgewaehltesDatum ? " selected" : "");
+    cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === st.gewaehltesDatum ? " selected" : "");
     const dots = count > 0 ? '<div class="cal-dots">' + '<span class="cal-dot"></span>'.repeat(Math.min(count, 3)) + '</div>' : "";
     cell.innerHTML = "<span>" + t + "</span>" + dots;
-    cell.onclick = () => { ausgewaehltesDatum = iso; renderKalenderAnsicht(); };
+    cell.onclick = () => { st.gewaehltesDatum = iso; renderKalenderAnsicht(); };
     grid.appendChild(cell);
   }
   calBox.appendChild(grid);
@@ -112,19 +113,19 @@ function zeigeMonat(container, termine, user) {
 
   const detBox = document.createElement("div");
   detBox.className = "box";
-  const lesbar = ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + "." + ausgewaehltesDatum.slice(0, 4);
+  const lesbar = st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + "." + st.gewaehltesDatum.slice(0, 4);
   detBox.innerHTML = '<h3 style="margin:0 0 12px;font-size:16px;">Termine am ' + lesbar + '</h3>';
 
   if (user.canWrite) {
     const addBtn = Object.assign(document.createElement("button"), {
       type: "button", className: "btn-success", style: "margin-bottom:14px;",
-      textContent: "+ Termin am " + ausgewaehltesDatum.slice(8, 10) + "." + ausgewaehltesDatum.slice(5, 7) + ". hinzufügen"
+      textContent: "+ Termin am " + st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + ". hinzufügen"
     });
-    addBtn.onclick = () => oeffneTerminFormular(ausgewaehltesDatum);
+    addBtn.onclick = () => oeffneTerminFormular(st.gewaehltesDatum);
     detBox.appendChild(addBtn);
   }
 
-  const liste = termine.filter(x => x.datum === ausgewaehltesDatum);
+  const liste = termine.filter(x => x.datum === st.gewaehltesDatum);
   if (liste.length === 0) {
     detBox.appendChild(Object.assign(document.createElement("p"), { style: "color:#64748b;font-size:14px;margin:0;", textContent: "Keine Termine an diesem Tag." }));
   } else {
@@ -134,21 +135,22 @@ function zeigeMonat(container, termine, user) {
 }
 
 function zeigeWoche(container, termine, user) {
+  const st = window.tsvCalState;
   const wBox = document.createElement("div");
   wBox.className = "box";
   wBox.style.padding = "14px";
-  const ende = new Date(wochenStartDatum);
+  const ende = new Date(st.wochenStart);
   ende.setDate(ende.getDate() + 6);
 
   const header = document.createElement("div");
   header.className = "cal-header";
   const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
   const next = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "›" });
-  const titelText = String(wochenStartDatum.getDate()).padStart(2, "0") + "." + String(wochenStartDatum.getMonth() + 1).padStart(2, "0") + ". – " +
+  const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
                     String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
   const title = Object.assign(document.createElement("h3"), { textContent: titelText });
-  prev.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() - 7); renderKalenderAnsicht(); };
-  next.onclick = () => { wochenStartDatum.setDate(wochenStartDatum.getDate() + 7); renderKalenderAnsicht(); };
+  prev.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() - 7); renderKalenderAnsicht(); };
+  next.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() + 7); renderKalenderAnsicht(); };
   header.append(prev, title, next);
   wBox.appendChild(header);
 
@@ -157,7 +159,7 @@ function zeigeWoche(container, termine, user) {
   const heute = heuteIso();
 
   for (let i = 0; i < 7; i++) {
-    const d = new Date(wochenStartDatum);
+    const d = new Date(st.wochenStart);
     d.setDate(d.getDate() + i);
     const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 
@@ -166,7 +168,7 @@ function zeigeWoche(container, termine, user) {
 
     const headRow = document.createElement("div");
     headRow.className = "week-mini-head";
-    headRow.innerHTML = '<span>' + WOCHENTAGE[i] + ' ' + String(d.getDate()).padStart(2, "0") + '.' + String(d.getMonth() + 1).padStart(2, "0") + '.</span>';
+    headRow.innerHTML = '<span>' + st.wochentage[i] + ' ' + String(d.getDate()).padStart(2, "0") + '.' + String(d.getMonth() + 1).padStart(2, "0") + '.</span>';
 
     if (user.canWrite) {
       const plus = document.createElement("span");
@@ -191,11 +193,11 @@ function zeigeWoche(container, termine, user) {
                        '<div class="title">' + t.titel + '</div>' +
                        '<div class="team">' + t.mannschaft + '</div>';
         ev.onclick = () => {
-          ausgewaehltesDatum = iso;
+          st.gewaehltesDatum = iso;
           const topBtns = document.querySelectorAll(".view-toggle-btn");
           if (topBtns.length >= 2) {
-            topBtns[0].classList.add("active");
-            topBtns[1].classList.remove("active");
+            topBtns.classList.add("active");
+            topBtns.classList.remove("active");
           }
           wechseleAnsicht("MONAT");
         };
@@ -211,9 +213,10 @@ function zeigeWoche(container, termine, user) {
 }
 
 function erstelleKarte(t, user) {
+  const st = window.tsvCalState;
   const dStr = t.datum || "";
   const tag = dStr.slice(8, 10) || "--";
-  const mon = MONATE_KURZ[parseInt(dStr.slice(5, 7), 10) - 1] || "---";
+  const mon = st.monateKurz[parseInt(dStr.slice(5, 7), 10) - 1] || "---";
   const card = document.createElement("div");
   card.className = "event-card";
 
@@ -223,7 +226,7 @@ function erstelleKarte(t, user) {
   card.innerHTML = '<div class="date-badge"><div class="day">' + tag + '</div><div class="month">' + mon + '</div></div>' +
     '<div class="event-content"><div><span class="team-tag">' + t.mannschaft + '</span>' + serieBadge + '</div>' +
     '<h3 class="event-title">' + t.titel + '</h3>' +
-    '<div class="event-meta"><span>🕒 ' + zeitText + '</span>' + (t.ort ? '<span>📍 ' + t.ort + '</span>' : '') + '</div>' +
+'🕒 ' + zeitText + '' + (t.ort ? '📍 ' + t.ort + '' : '') + '' +
 (t.info ? '' + t.info + '' : '') + '';
 if (user.canWrite) {
 const delBtn = document.createElement("button");
@@ -236,31 +239,33 @@ card.querySelector(".event-content").appendChild(delBtn);
 return card;
 }
 async function ladeTermine(stillesUpdate = false) {
+const st = window.tsvCalState;
 const listeDiv = document.getElementById("termine-liste");
 const user = getAktuellerUser();
 if (!user || !listeDiv) return;
 if (!stillesUpdate) renderKalenderAnsicht();
 try {
-const response = await fetch(kalenderDbHost + "/termine.json?auth=" + user.idToken);
+const response = await fetch(st.dbHost + "/termine.json?auth=" + user.idToken);
 if (response.status === 401) return;
 const data = await response.json();
 const neuerStand = JSON.stringify(data || {});
-if (neuerStand !== aktuellerDatenStand || !stillesUpdate) {
-aktuellerDatenStand = neuerStand;
-alleTermineCache = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
-alleTermineCache.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
+if (neuerStand !== st.datenStand || !stillesUpdate) {
+st.datenStand = neuerStand;
+st.termine = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
+st.termine.sort((a, b) => (a.datum + a.uhrzeit).localeCompare(b.datum + b.uhrzeit));
 renderKalenderAnsicht();
 }
 starteLiveSync(user);
 } catch (err) {}
 }
 function starteLiveSync(user) {
-if (liveStream) return;
+const st = window.tsvCalState;
+if (st.liveStream) return;
 try {
-liveStream = new EventSource(kalenderDbHost + "/termine.json?auth=" + user.idToken);
-liveStream.addEventListener("put", () => ladeTermine(true));
-liveStream.addEventListener("patch", () => ladeTermine(true));
-liveStream.onerror = () => { if (liveStream) { liveStream.close(); liveStream = null; } };
+st.liveStream = new EventSource(st.dbHost + "/termine.json?auth=" + user.idToken);
+st.liveStream.addEventListener("put", () => ladeTermine(true));
+st.liveStream.addEventListener("patch", () => ladeTermine(true));
+st.liveStream.onerror = () => { if (st.liveStream) { st.liveStream.close(); st.liveStream = null; } };
 } catch (e) {}
 }
 setInterval(() => {
