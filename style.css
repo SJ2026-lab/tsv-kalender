@@ -66,7 +66,7 @@ body {
   box-shadow: 0 2px 8px rgba(15, 30, 61, 0.06);
 }
 
-/* 2. Steuerleiste (Alle Mannschaften + Monat/Woche) */
+/* 2. Steuerleiste */
 .top-controls {
   display: flex;
   gap: 10px;
@@ -189,7 +189,7 @@ body {
 .news-text h4 { margin: 0 0 4px; font-size: 14px; font-weight: 800; color: var(--navy); line-height: 1.25; }
 .news-text p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.35; }
 
-/* 4. 2-Spalten-Hauptbereich (Links Kalender, Rechts Kommende Events) */
+/* 4. 2-Spalten-Hauptbereich */
 .split-grid {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
@@ -290,7 +290,7 @@ body {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
 
-/* Rechte Spalte: Kommende Events */
+/* Rechte Spalte: Kommende Events (maximal 3 Events hoch, danach scrollbar) */
 .events-card {
   background: var(--card);
   padding: 14px 12px;
@@ -298,9 +298,31 @@ body {
   box-shadow: 0 6px 20px rgba(15, 30, 61, 0.05);
   display: flex;
   flex-direction: column;
+  max-height: 270px;
 }
 
-.events-card h3 { margin: 0 0 12px; font-size: 14px; font-weight: 800; color: var(--navy); }
+.events-card h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--navy);
+  flex-shrink: 0;
+}
+
+.events-scroll-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.events-scroll-list::-webkit-scrollbar {
+  width: 4px;
+}
+.events-scroll-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
 
 .mini-event-row {
   display: flex;
@@ -357,7 +379,7 @@ body {
 .week-mini-head { font-size: 11px; font-weight: 800; color: var(--navy); border-bottom: 1px solid rgba(15,30,61,0.1); padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; }
 .week-mini-event { background: white; border-left: 3px solid var(--accent); border-radius: 6px; padding: 5px; margin-bottom: 5px; font-size: 10px; }
 
-/* 6. Untere Navigationsleiste (4 Tabs wie auf dem Bild) */
+/* 6. Untere Navigationsleiste (4 Tabs) */
 .bottom-nav {
   position: fixed;
   bottom: 12px;
@@ -403,12 +425,12 @@ label { display: block; font-size: 11px; font-weight: 700; text-transform: upper
 input, select, textarea {
   display: block; width: 100%; margin-bottom: 13px; padding: 12px 14px;
   font-size: 16px; font-family: inherit; color: var(--text);
-  background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px;
+background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px;
 }
 button {
-  display: block; width: 100%; padding: 14px; margin-bottom: 10px;
-  font-size: 15px; font-weight: 700; color: white;
-  background: var(--navy); border: none; border-radius: 14px; cursor: pointer;
+display: block; width: 100%; padding: 14px; margin-bottom: 10px;
+font-size: 15px; font-weight: 700; color: white;
+background: var(--navy); border: none; border-radius: 14px; cursor: pointer;
 }
 .btn-success { background: var(--accent); color: white; }
 .btn-secondary { background: #e2e8f0; color: var(--navy); }
