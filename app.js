@@ -214,7 +214,7 @@ function renderDashboard(user) {
       aktualisiereFilterChips();
       if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
     };
-    chipGrid.appendChild(btnAlle);
+chipGrid.appendChild(btnAlle);
 MANNSCHAFTEN.forEach(team => {
 const istAktiv = ausgewaehlteMannschaften.includes(team);
 const cBtn = el("button", {
@@ -252,8 +252,7 @@ const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
 const sponsor = el("div", { className: "sponsor-banner" });
 sponsor.innerHTML = 'TSV PartnerBau & Immobilien' +
-'Stark im Team –
-auf und neben dem Platz.';
+'Stark im Team – auf und neben dem Platz.';
 homeView.appendChild(sponsor);
 const platzwartView = el("div", { className: "box hidden" });
 platzwartView.innerHTML = '🛠️ Platzwart & KabinenHier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.';
