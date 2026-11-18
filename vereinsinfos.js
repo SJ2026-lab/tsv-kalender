@@ -1,11 +1,14 @@
 const infoDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
 
-let aktuelleNewsDaten = {
+const STANDARD_NEWS = {
   titel: "Willkommen im neuen TSV Kalender",
   kurztext: "Alle Trainingszeiten, Spiele und Vereins-News ab sofort live auf einen Blick.",
   volltext: "Herzlich willkommen in unserer digitalen Vereins-App! Hier findest du immer aktuell alle Termine deiner Mannschaft sowie wichtige Neuigkeiten rund um den TSV.",
   bild: ""
 };
+
+let aktuelleNewsDaten = { ...STANDARD_NEWS };
+let hatEigeneNews = false;
 
 let sponsorenListe = [];
 let aktuellerSponsorIndex = 0;
@@ -53,7 +56,13 @@ async function ladeVereinsInfos() {
 
     if (newsRes.ok) {
       const nData = await newsRes.json();
-      if (nData && nData.titel) aktuelleNewsDaten = nData;
+      if (nData && nData.titel) {
+        aktuelleNewsDaten = nData;
+        hatEigeneNews = true;
+      } else {
+        aktuelleNewsDaten = { ...STANDARD_NEWS };
+        hatEigeneNews = false;
+      }
     }
 
     if (sponRes.ok) {
@@ -66,6 +75,7 @@ async function ladeVereinsInfos() {
   zeichneSponsorenBanner();
 }
 
+// 1. News-Banner (2 Spalten: Links Bild, Rechts Text)
 function zeichneNewsBanner() {
   const container = document.getElementById("news-slot");
   const user = getAktuellerUser();
@@ -173,11 +183,12 @@ function zeigeNewsVolltext() {
   document.body.appendChild(backdrop);
 }
 
+// Admin-Editor für News (Inklusive Löschen-Funktion)
 function oeffneNewsEditor() {
   const user = getAktuellerUser();
   if (!user) return;
 
-  let gewaehltesBildBase64 = aktuelleNewsDaten.bild || "";
+  let gewaehltesBildBase64 = hatEigeneNews ? (aktuelleNewsDaten.bild || "") : "";
 
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -214,15 +225,15 @@ function oeffneNewsEditor() {
   };
 
   const titelIn = erstelleFeld("text", "news-edit-titel", "Überschrift");
-  titelIn.value = aktuelleNewsDaten.titel || "";
+  titelIn.value = hatEigeneNews ? (aktuelleNewsDaten.titel || "") : "";
 
   const kurzIn = erstelleFeld("text", "news-edit-kurz", "Kurze Vorschau (1–2 Sätze)");
-  kurzIn.value = aktuelleNewsDaten.kurztext || "";
+  kurzIn.value = hatEigeneNews ? (aktuelleNewsDaten.kurztext || "") : "";
 
   const vollIn = document.createElement("textarea");
   vollIn.rows = 4;
   vollIn.placeholder = "Ausführlicher Bericht (erscheint beim Antippen)...";
-  vollIn.value = aktuelleNewsDaten.volltext || "";
+  vollIn.value = hatEigeneNews ? (aktuelleNewsDaten.volltext || "") : "";
 
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
@@ -250,6 +261,7 @@ function oeffneNewsEditor() {
       });
       if (!res.ok) throw new Error("Status " + res.status);
       aktuelleNewsDaten = neu;
+      hatEigeneNews = true;
       zeichneNewsBanner();
       backdrop.remove();
     } catch (e) {
@@ -265,49 +277,95 @@ function oeffneNewsEditor() {
     erstelleLabel("Überschrift"), titelIn,
     erstelleLabel("Vorschautext"), kurzIn,
     erstelleLabel("Ganzer Bericht"), vollIn,
-    saveBtn, msg
+    saveBtn
   );
-  backdrop.appendChild(sheet);
-  document.body.appendChild(backdrop);
+
+  // Löschen-Button anzeigen, wenn eine eigene News gespeichert ist
+  if (hatEigeneNews) {
+    const delNewsBtn = document.createElement("button");
+    delNewsBtn.type = "button";
+    delNewsBtn.className = "btn-danger";
+    delNewsBtn.textContent = "Aktuelle News löschen";
+    delNewsBtn.onclick = async () => {
+      if (!confirm("Möchtest du die aktuelle News wirklich löschen?")) return;
+      delNewsBtn.textContent = "Lösche...";
+      try {
+        await fetch(infoDbHost + "/news.json?auth=" + user.idToken, { method: "DELETE" });
+        aktuelleNewsDaten = { ...STANDARD_NEWS };
+        hatEigeneNews = false;
+        zeichneNewsBanner();
+        backdrop.remove();
+      } catch (e) {
+        msg.textContent = "Fehler beim Löschen: " + e.message;
+      }
+    };
+    sheet.appendChild(delNewsBtn);
 }
-
+sheet.appendChild(msg);
+backdrop.appendChild(sheet);
+document.body.appendChild(backdrop);
+}
+// 2. Bandenwerbung als sanft gleitender Slider (alle 7 Sekunden)
 function zeichneSponsorenBanner() {
-  const container = document.getElementById("sponsor-slot");
-  const user = getAktuellerUser();
-  if (!container || !user) return;
-
-  if (sponsorTimer) {
-    clearInterval(sponsorTimer);
-    sponsorTimer = null;
-  }
-
-  const liste = sponsorenListe.length > 0 ? sponsorenListe : [
-    { firma: "TSV Partner", slogan: "Hier kann Ihre Bandenwerbung stehen!", bild: "" }
-  ];
-
-  if (aktuellerSponsorIndex >= liste.length) aktuellerSponsorIndex = 0;
-
-  function renderAktuellenSponsor() {
-    container.innerHTML = "";
-    const sp = liste[aktuellerSponsorIndex];
-
-    const banner = document.createElement("div");
-    banner.className = "sponsor-banner" + (sp.bild ? " has-image" : "");
-
-    if (sp.bild) {
-      const img = document.createElement("img");
-      img.className = "sponsor-banner-img";
-      img.src = sp.bild;
-      img.alt = sp.firma || "Sponsor";
-      banner.appendChild(img);
-    } else {
-      const logoDiv = document.createElement("div");
-      logoDiv.className = "sponsor-logo";
-      logoDiv.textContent = sp.firma || "TSV Partner";
-      const sloganDiv = document.createElement("div");
-      sloganDiv.className = "sponsor-slogan";
+const container = document.getElementById("sponsor-slot");
+const user = getAktuellerUser();
+if (!container || !user) return;
+if (sponsorTimer) {
+clearInterval(sponsorTimer);
+sponsorTimer = null;
+}
+container.innerHTML = "";
+const liste = sponsorenListe.length > 0 ? sponsorenListe : [
+{ firma: "TSV Partner", slogan: "Hier kann Ihre Bandenwerbung stehen!", bild: "" }
+];
+if (aktuellerSponsorIndex >= liste.length) aktuellerSponsorIndex = 0;
+const banner = document.createElement("div");
+banner.className = "sponsor-banner";
+if (liste.some(x => x.bild)) banner.classList.add("has-image");
+const track = document.createElement("div");
+track.className = "sponsor-slider-track";
+liste.forEach(sp => {
+const slide = document.createElement("div");
+slide.className = "sponsor-slide" + (sp.bild ? " has-image" : "");
+if (sp.bild) {
+const img = document.createElement("img");
+img.className = "sponsor-banner-img";
+img.src = sp.bild;
+img.alt = sp.firma || "Sponsor";
+slide.appendChild(img);
+} else {
+slide.style.padding = "14px 16px";
+const logoDiv = document.createElement("div");
+logoDiv.className = "sponsor-logo";
+logoDiv.textContent = sp.firma || "TSV Partner";
+const sloganDiv = document.createElement("div");
+sloganDiv.className = "sponsor-slogan";
 sloganDiv.textContent = sp.slogan || "Stark im Team – auf und neben dem Platz.";
-banner.append(logoDiv, sloganDiv);
+slide.append(logoDiv, sloganDiv);
+}
+track.appendChild(slide);
+});
+banner.appendChild(track);
+// Kleine Indikator-Punkte unten, wenn mehr als 1 Banner vorhanden ist
+const dotsWrap = document.createElement("div");
+dotsWrap.className = "sponsor-dots";
+const dotEls = [];
+if (liste.length > 1) {
+liste.forEach((_, idx) => {
+const dot = document.createElement("span");
+dot.className = "sponsor-dot" + (idx === aktuellerSponsorIndex ? " active" : "");
+dotsWrap.appendChild(dot);
+dotEls.push(dot);
+});
+banner.appendChild(dotsWrap);
+}
+function geheZuSlide(index) {
+aktuellerSponsorIndex = index;
+track.style.transform = "translateX(-" + (aktuellerSponsorIndex * 100) + "%)";
+dotEls.forEach((d, i) => {
+if (i === aktuellerSponsorIndex) d.classList.add("active");
+else d.classList.remove("active");
+});
 }
 if (user.role === "Vorstand") {
 const manageBtn = document.createElement("button");
@@ -322,20 +380,18 @@ banner.appendChild(manageBtn);
 }
 banner.onclick = () => {
 if (liste.length > 1) {
-aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
-renderAktuellenSponsor();
+geheZuSlide((aktuellerSponsorIndex + 1) % liste.length);
 }
 };
 container.appendChild(banner);
-}
-renderAktuellenSponsor();
+geheZuSlide(aktuellerSponsorIndex);
+// Entspanntes Durchsliden alle 7 Sekunden
 if (liste.length > 1) {
 sponsorTimer = setInterval(() => {
 if (document.getElementById("sponsor-slot")) {
-aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
-renderAktuellenSponsor();
+geheZuSlide((aktuellerSponsorIndex + 1) % liste.length);
 }
-}, 5000);
+}, 7000);
 }
 }
 function oeffneSponsorenManager() {
