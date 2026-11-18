@@ -372,7 +372,7 @@ container.appendChild(banner);
 // Nahtlose Endlosschleife starten, sobald mindestens 2 Werbepartner vorhanden sind
 if (basisListe.length > 1) {
 let pos = 0;
-const slideDauerMs = 800; // 0,8 Sekunden sanftes Gleiten
+const slideDauerMs = 5000; // 0,8 Sekunden sanftes Gleiten
 const pauseDauerMs = 1000; // Exakt 1 Sekunde Pause voll im Bild
 function aktualisierePunkte(index) {
 const echterIndex = index % basisListe.length;
