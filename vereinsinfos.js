@@ -4,15 +4,42 @@ let aktuelleNewsDaten = {
   titel: "Willkommen im neuen TSV Kalender",
   kurztext: "Alle Trainingszeiten, Spiele und Vereins-News ab sofort live auf einen Blick.",
   volltext: "Herzlich willkommen in unserer digitalen Vereins-App! Hier findest du immer aktuell alle Termine deiner Mannschaft sowie wichtige Neuigkeiten rund um den TSV.",
-  icon: "⚽"
+  bild: ""
 };
 
 let sponsorenListe = [];
 let aktuellerSponsorIndex = 0;
 let sponsorTimer = null;
 
+// Hilfsfunktion: Foto vom Handy/iPad automatisch verkleinern & in Web-Format umwandeln
+function komprimiereBildDatei(file, maxBreite, qualitaet) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > maxBreite) {
+          h = Math.round((h * maxBreite) / w);
+          w = maxBreite;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", qualitaet));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function ladeVereinsInfos() {
-  // Sofort Standard-Banner zeichnen, damit nie eine Lücke entsteht
   zeichneNewsBanner();
   zeichneSponsorenBanner();
 
@@ -40,6 +67,7 @@ async function ladeVereinsInfos() {
   zeichneSponsorenBanner();
 }
 
+// 1. News-Karte (2 Spalten: Links Bild, Rechts Text)
 function zeichneNewsBanner() {
   const container = document.getElementById("news-slot");
   const user = getAktuellerUser();
@@ -78,12 +106,20 @@ function zeichneNewsBanner() {
 
   head.append(titleH3, rightControls);
 
+  // 2-Spalten-Inhalt: Links Bildspalte, Rechts Textspalte
   const body = document.createElement("div");
   body.className = "news-body";
 
   const thumb = document.createElement("div");
   thumb.className = "news-thumb";
-  thumb.textContent = aktuelleNewsDaten.icon || "⚽";
+
+  if (aktuelleNewsDaten.bild) {
+    const img = document.createElement("img");
+    img.src = aktuelleNewsDaten.bild;
+    thumb.appendChild(img);
+  } else {
+    thumb.textContent = "⚽";
+  }
 
   const textDiv = document.createElement("div");
   textDiv.className = "news-text";
@@ -113,7 +149,7 @@ function zeigeNewsVolltext() {
   head.className = "sheet-header";
   const h3 = document.createElement("h3");
   h3.style.cssText = "margin:0;font-size:18px;color:var(--navy);";
-  h3.textContent = (aktuelleNewsDaten.icon || "⚽") + " " + aktuelleNewsDaten.titel;
+  h3.textContent = aktuelleNewsDaten.titel;
 
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
@@ -121,20 +157,31 @@ function zeigeNewsVolltext() {
   closeBtn.textContent = "×";
   closeBtn.onclick = () => backdrop.remove();
   head.append(h3, closeBtn);
+  sheet.appendChild(head);
+
+  if (aktuelleNewsDaten.bild) {
+    const bigImg = document.createElement("img");
+    bigImg.src = aktuelleNewsDaten.bild;
+    bigImg.style.cssText = "width:100%;max-height:220px;object-fit:cover;border-radius:14px;margin-bottom:14px;";
+    sheet.appendChild(bigImg);
+  }
 
   const bodyP = document.createElement("p");
   bodyP.style.cssText = "font-size:14px;line-height:1.55;color:var(--text);white-space:pre-line;margin:0;";
   bodyP.textContent = aktuelleNewsDaten.volltext || aktuelleNewsDaten.kurztext;
 
   backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
-  sheet.append(head, bodyP);
+  sheet.appendChild(bodyP);
   backdrop.appendChild(sheet);
   document.body.appendChild(backdrop);
 }
 
+// Admin-Editor für News (mit Bild-Upload vom Handy/iPad)
 function oeffneNewsEditor() {
   const user = getAktuellerUser();
   if (!user) return;
+
+  let gewaehltesBildBase64 = aktuelleNewsDaten.bild || "";
 
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -154,20 +201,22 @@ function oeffneNewsEditor() {
   closeBtn.onclick = () => backdrop.remove();
   head.append(h3, closeBtn);
 
-  const iconSel = document.createElement("select");
-  [
-    { val: "⚽", label: "⚽ Fußball / Spielbericht" },
-    { val: "🏆", label: "🏆 Turnier / Pokal" },
-    { val: "📢", label: "📢 Wichtige Vereins-Info" },
-    { val: "🎉", label: "🎉 Vereinsfest / Event" },
-    { val: "⚠️", label: "⚠️ Platzsperre / Achtung" }
-  ].forEach(ic => {
-    const opt = document.createElement("option");
-    opt.value = ic.val;
-    opt.textContent = ic.label;
-    if (ic.val === aktuelleNewsDaten.icon) opt.selected = true;
-    iconSel.appendChild(opt);
-  });
+  // Bild-Auswahl & Vorschau
+  const previewImg = document.createElement("img");
+  previewImg.className = "img-preview-box" + (gewaehltesBildBase64 ? "" : " hidden");
+  if (gewaehltesBildBase64) previewImg.src = gewaehltesBildBase64;
+
+  const fileInput = document.createElement("in" + "put");
+  fileInput.setAttribute("type", "file");
+  fileInput.setAttribute("accept", "image/*");
+
+  fileInput.onchange = async (e) => {
+    const file = e.target.files;
+    if (!file) return;
+    gewaehltesBildBase64 = await komprimiereBildDatei(file, 500, 0.75);
+    previewImg.src = gewaehltesBildBase64;
+    previewImg.classList.remove("hidden");
+  };
 
   const titelIn = erstelleFeld("text", "news-edit-titel", "Überschrift");
   titelIn.value = aktuelleNewsDaten.titel || "";
@@ -192,7 +241,7 @@ function oeffneNewsEditor() {
     if (!titelIn.value.trim()) { msg.textContent = "Bitte Überschrift eingeben!"; return; }
     saveBtn.textContent = "Speichere...";
     const neu = {
-      icon: iconSel.value,
+      bild: gewaehltesBildBase64,
       titel: titelIn.value.trim(),
       kurztext: kurzIn.value.trim(),
       volltext: vollIn.value.trim(),
@@ -217,7 +266,7 @@ function oeffneNewsEditor() {
   backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
   sheet.append(
     head,
-    erstelleLabel("Symbol"), iconSel,
+    erstelleLabel("News-Bild auswählen"), fileInput, previewImg,
     erstelleLabel("Überschrift"), titelIn,
     erstelleLabel("Vorschautext"), kurzIn,
     erstelleLabel("Ganzer Bericht"), vollIn,
@@ -227,6 +276,7 @@ function oeffneNewsEditor() {
   document.body.appendChild(backdrop);
 }
 
+// 2. Bandenwerbung als rotierende Werbe-Bilder (Vorstand)
 function zeichneSponsorenBanner() {
   const container = document.getElementById("sponsor-slot");
   const user = getAktuellerUser();
@@ -238,7 +288,7 @@ function zeichneSponsorenBanner() {
   }
 
   const liste = sponsorenListe.length > 0 ? sponsorenListe : [
-    { firma: "TSV Partner", branche: "Bau & Immobilien", slogan: "Stark im Team – auf und neben dem Platz.", farbe: "linear-gradient(135deg, #09152b 0%, #16325c 60%, #14532d 100%)" }
+    { firma: "TSV Partner", slogan: "Hier kann Ihre Bandenwerbung stehen!", bild: "" }
   ];
 
   if (aktuellerSponsorIndex >= liste.length) aktuellerSponsorIndex = 0;
@@ -248,63 +298,58 @@ function zeichneSponsorenBanner() {
     const sp = liste[aktuellerSponsorIndex];
 
     const banner = document.createElement("div");
-    banner.className = "sponsor-banner";
-    if (sp.farbe) banner.style.background = sp.farbe;
+    banner.className = "sponsor-banner" + (sp.bild ? " has-image" : "");
 
-    const logoDiv = document.createElement("div");
-    logoDiv.className = "sponsor-logo";
-    logoDiv.textContent = sp.firma;
-    if (sp.branche) {
-      const sm = document.createElement("small");
-      sm.textContent = sp.branche;
-      logoDiv.appendChild(sm);
-    }
-
-    const sloganDiv = document.createElement("div");
-    sloganDiv.className = "sponsor-slogan";
-    sloganDiv.textContent = sp.slogan;
-
-    banner.append(logoDiv, sloganDiv);
-
-    if (user.role === "Vorstand") {
-      const manageBtn = document.createElement("button");
-      manageBtn.type = "button";
-      manageBtn.textContent = "⚙️";
-      manageBtn.style.cssText = "width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.2);color:white;padding:0;margin:0;font-size:15px;flex-shrink:0;";
-      manageBtn.onclick = (e) => {
-        e.stopPropagation();
-        oeffneSponsorenManager();
-      };
-      banner.appendChild(manageBtn);
-    }
-
-    banner.onclick = () => {
-      if (liste.length > 1) {
-        aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
-        renderAktuellenSponsor();
-      }
-    };
-
-    container.appendChild(banner);
-  }
-
-  renderAktuellenSponsor();
-
-  if (liste.length > 1) {
-    sponsorTimer = setInterval(() => {
-      if (document.getElementById("sponsor-slot")) {
-        aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
-        renderAktuellenSponsor();
-      }
-    }, 5000);
-  }
+    if (sp.bild) {
+      const img = document.createElement("img");
+      img.className = "sponsor-banner-img";
+img.src = sp.bild;
+img.alt = sp.firma || "Sponsor";
+banner.appendChild(img);
+} else {
+const logoDiv = document.createElement("div");
+logoDiv.className = "sponsor-logo";
+logoDiv.textContent = sp.firma || "TSV Partner";
+const sloganDiv = document.createElement("div");
+sloganDiv.className = "sponsor-slogan";
+sloganDiv.textContent = sp.slogan || "Stark im Team – auf und neben dem Platz.";
+banner.append(logoDiv, sloganDiv);
 }
-
+if (user.role === "Vorstand") {
+const manageBtn = document.createElement("button");
+manageBtn.type = "button";
+manageBtn.className = "sponsor-gear-btn";
+manageBtn.textContent = "⚙️";
+manageBtn.onclick = (e) => {
+e.stopPropagation();
+oeffneSponsorenManager();
+};
+banner.appendChild(manageBtn);
+}
+banner.onclick = () => {
+if (liste.length > 1) {
+aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
+renderAktuellenSponsor();
+}
+};
+container.appendChild(banner);
+}
+renderAktuellenSponsor();
+if (liste.length > 1) {
+sponsorTimer = setInterval(() => {
+if (document.getElementById("sponsor-slot")) {
+aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
+renderAktuellenSponsor();
+}
+}, 5000);
+}
+}
+// Exklusiver Bilder-Manager für Vorstand (Bandenwerbung hinzufügen & löschen)
 function oeffneSponsorenManager() {
-  const user = getAktuellerUser();
-  if (!user || user.role !== "Vorstand") return;
-
-  const backdrop = document.createElement("div");
+const user = getAktuellerUser();
+if (!user || user.role !== "Vorstand") return;
+let neuesBannerBase64 = "";
+const backdrop = document.createElement("div");
 backdrop.className = "modal-backdrop";
 const sheet = document.createElement("div");
 sheet.className = "bottom-sheet";
@@ -312,7 +357,7 @@ const head = document.createElement("div");
 head.className = "sheet-header";
 const h3 = document.createElement("h3");
 h3.style.cssText = "margin:0;font-size:18px;color:var(--navy);";
-h3.textContent = "Bandenwerbung verwalten";
+h3.textContent = "Bandenwerbung (Bilder)";
 const closeBtn = document.createElement("button");
 closeBtn.type = "button";
 closeBtn.className = "sheet-close";
@@ -327,33 +372,37 @@ listDiv.innerHTML = "";
 if (sponsorenListe.length === 0) {
 const p = document.createElement("p");
 p.style.cssText = "font-size:13px;color:var(--muted);margin:0;";
-p.textContent = "Noch keine eigenen Werbepartner eingetragen.";
+p.textContent = "Noch keine Werbebanner hochgeladen.";
 listDiv.appendChild(p);
 return;
 }
 sponsorenListe.forEach(sp => {
 const row = document.createElement("div");
-row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:12px;margin-bottom:8px;border:1px solid var(--border);";
-const info = document.createElement("div");
+row.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px;background:#f8fafc;border-radius:12px;margin-bottom:8px;border:1px solid var(--border);";
+const leftPart = document.createElement("div");
+leftPart.style.cssText = "display:flex;align-items:center;gap:10px;min-width:0;flex:1;";
+if (sp.bild) {
+const miniImg = document.createElement("img");
+miniImg.src = sp.bild;
+miniImg.style.cssText = "width:70px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;";
+leftPart.appendChild(miniImg);
+}
 const stName = document.createElement("strong");
-stName.style.cssText = "font-size:13px;color:var(--navy);display:block;";
-stName.textContent = sp.firma;
-const smText = document.createElement("small");
-smText.style.color = "var(--muted)";
-smText.textContent = sp.slogan;
-info.append(stName, smText);
+stName.style.cssText = "font-size:13px;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+stName.textContent = sp.firma || "Werbepartner";
+leftPart.appendChild(stName);
 const del = document.createElement("button");
 del.type = "button";
 del.className = "btn-danger";
 del.textContent = "Löschen";
-del.style.cssText = "width:auto;padding:6px 10px;margin:0;font-size:11px;";
+del.style.cssText = "width:auto;padding:6px 10px;margin:0;font-size:11px;flex-shrink:0;";
 del.onclick = async () => {
 await fetch(infoDbHost + "/sponsoren/" + sp.id + ".json?auth=" + user.idToken, { method: "DELETE" });
 sponsorenListe = sponsorenListe.filter(x => x.id !== sp.id);
 renderPartnerListe();
 zeichneSponsorenBanner();
 };
-row.append(info, del);
+row.append(leftPart, del);
 listDiv.appendChild(row);
 });
 }
@@ -361,38 +410,33 @@ renderPartnerListe();
 sheet.appendChild(listDiv);
 const subTitle = document.createElement("h4");
 subTitle.style.cssText = "margin:0 0 10px;font-size:14px;color:var(--navy);";
-subTitle.textContent = "+ Neuen Werbepartner hinzufügen";
-const firmaIn = erstelleFeld("text", "sp-firma", "Firmenname (z. B. Metzgerei Müller)");
-const brancheIn = erstelleFeld("text", "sp-branche", "Branche / Zusatz (z. B. Partyservice)");
-const sloganIn = erstelleFeld("text", "sp-slogan", "Werbespruch (z. B. Wir wünschen viel Erfolg!)");
-const farbeSel = document.createElement("select");
-[
-{ val: "linear-gradient(135deg, #09152b 0%, #16325c 60%, #14532d 100%)", label: "Vereinsblau & Stadiongrün" },
-{ val: "linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)", label: "Kräftiges Rot" },
-{ val: "linear-gradient(135deg, #064e3b 0%, #059669 100%)", label: "Smaragdgrün" },
-{ val: "linear-gradient(135deg, #1e293b 0%, #334155 100%)", label: "Edles Anthrazit" },
-{ val: "linear-gradient(135deg, #78350f 0%, #b45309 100%)", label: "Gold / Bronze" }
-].forEach(f => {
-const o = document.createElement("option");
-o.value = f.val;
-o.textContent = f.label;
-farbeSel.appendChild(o);
-});
+subTitle.textContent = "+ Neues Werbebanner hochladen";
+const firmaIn = erstelleFeld("text", "sp-firma", "Name des Sponsors (z. B. Autohaus Weber)");
+const previewImg = document.createElement("img");
+previewImg.className = "img-preview-box hidden";
+const fileInput = document.createElement("in" + "put");
+fileInput.setAttribute("type", "file");
+fileInput.setAttribute("accept", "image/*");
+fileInput.onchange = async (e) => {
+const file = e.target.files;
+if (!file) return;
+neuesBannerBase64 = await komprimiereBildDatei(file, 700, 0.8);
+previewImg.src = neuesBannerBase64;
+previewImg.classList.remove("hidden");
+};
 const addBtn = document.createElement("button");
 addBtn.type = "button";
 addBtn.className = "btn-success";
-addBtn.textContent = "Werbepartner speichern";
+addBtn.textContent = "Banner speichern";
 addBtn.onclick = async () => {
-if (!firmaIn.value.trim() || !sloganIn.value.trim()) {
-alert("Bitte Firmenname und Werbespruch ausfüllen!");
+if (!neuesBannerBase64) {
+alert("Bitte zuerst ein Werbebild auswählen!");
 return;
 }
-addBtn.textContent = "Speichere...";
+addBtn.textContent = "Lade Banner hoch...";
 const neuerPartner = {
-firma: firmaIn.value.trim(),
-branche: brancheIn.value.trim(),
-slogan: sloganIn.value.trim(),
-farbe: farbeSel.value
+firma: firmaIn.value.trim() || "TSV Partner",
+bild: neuesBannerBase64
 };
 const res = await fetch(infoDbHost + "/sponsoren.json?auth=" + user.idToken, {
 method: "POST",
@@ -403,20 +447,19 @@ if (res.ok) {
 const data = await res.json();
 sponsorenListe.push({ id: data.name, ...neuerPartner });
 firmaIn.value = "";
-brancheIn.value = "";
-sloganIn.value = "";
+fileInput.value = "";
+neuesBannerBase64 = "";
+previewImg.classList.add("hidden");
 renderPartnerListe();
 zeichneSponsorenBanner();
 }
-addBtn.textContent = "Werbepartner speichern";
+addBtn.textContent = "Banner speichern";
 };
 backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
 sheet.append(
 subTitle,
-erstelleLabel("Firmenname"), firmaIn,
-erstelleLabel("Branche (optional)"), brancheIn,
-erstelleLabel("Werbeslogan"), sloganIn,
-erstelleLabel("Banner-Farbe"), farbeSel,
+erstelleLabel("Sponsor-Name (für die Übersicht)"), firmaIn,
+erstelleLabel("Banner-Bild auswählen (Querformat empfohlen)"), fileInput, previewImg,
 addBtn
 );
 backdrop.appendChild(sheet);
