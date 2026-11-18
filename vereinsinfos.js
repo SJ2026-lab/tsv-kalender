@@ -11,7 +11,6 @@ let sponsorenListe = [];
 let aktuellerSponsorIndex = 0;
 let sponsorTimer = null;
 
-// Hilfsfunktion: Foto vom Handy/iPad automatisch verkleinern & in Web-Format umwandeln
 function komprimiereBildDatei(file, maxBreite, qualitaet) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -67,7 +66,6 @@ async function ladeVereinsInfos() {
   zeichneSponsorenBanner();
 }
 
-// 1. News-Karte (2 Spalten: Links Bild, Rechts Text)
 function zeichneNewsBanner() {
   const container = document.getElementById("news-slot");
   const user = getAktuellerUser();
@@ -106,7 +104,6 @@ function zeichneNewsBanner() {
 
   head.append(titleH3, rightControls);
 
-  // 2-Spalten-Inhalt: Links Bildspalte, Rechts Textspalte
   const body = document.createElement("div");
   body.className = "news-body";
 
@@ -176,7 +173,6 @@ function zeigeNewsVolltext() {
   document.body.appendChild(backdrop);
 }
 
-// Admin-Editor für News (mit Bild-Upload vom Handy/iPad)
 function oeffneNewsEditor() {
   const user = getAktuellerUser();
   if (!user) return;
@@ -201,7 +197,6 @@ function oeffneNewsEditor() {
   closeBtn.onclick = () => backdrop.remove();
   head.append(h3, closeBtn);
 
-  // Bild-Auswahl & Vorschau
   const previewImg = document.createElement("img");
   previewImg.className = "img-preview-box" + (gewaehltesBildBase64 ? "" : " hidden");
   if (gewaehltesBildBase64) previewImg.src = gewaehltesBildBase64;
@@ -211,7 +206,7 @@ function oeffneNewsEditor() {
   fileInput.setAttribute("accept", "image/*");
 
   fileInput.onchange = async (e) => {
-    const file = e.target.files;
+    const file = e.target.files.item(0);
     if (!file) return;
     gewaehltesBildBase64 = await komprimiereBildDatei(file, 500, 0.75);
     previewImg.src = gewaehltesBildBase64;
@@ -276,7 +271,6 @@ function oeffneNewsEditor() {
   document.body.appendChild(backdrop);
 }
 
-// 2. Bandenwerbung als rotierende Werbe-Bilder (Vorstand)
 function zeichneSponsorenBanner() {
   const container = document.getElementById("sponsor-slot");
   const user = getAktuellerUser();
@@ -303,15 +297,15 @@ function zeichneSponsorenBanner() {
     if (sp.bild) {
       const img = document.createElement("img");
       img.className = "sponsor-banner-img";
-img.src = sp.bild;
-img.alt = sp.firma || "Sponsor";
-banner.appendChild(img);
-} else {
-const logoDiv = document.createElement("div");
-logoDiv.className = "sponsor-logo";
-logoDiv.textContent = sp.firma || "TSV Partner";
-const sloganDiv = document.createElement("div");
-sloganDiv.className = "sponsor-slogan";
+      img.src = sp.bild;
+      img.alt = sp.firma || "Sponsor";
+      banner.appendChild(img);
+    } else {
+      const logoDiv = document.createElement("div");
+      logoDiv.className = "sponsor-logo";
+      logoDiv.textContent = sp.firma || "TSV Partner";
+      const sloganDiv = document.createElement("div");
+      sloganDiv.className = "sponsor-slogan";
 sloganDiv.textContent = sp.slogan || "Stark im Team – auf und neben dem Platz.";
 banner.append(logoDiv, sloganDiv);
 }
@@ -344,7 +338,6 @@ renderAktuellenSponsor();
 }, 5000);
 }
 }
-// Exklusiver Bilder-Manager für Vorstand (Bandenwerbung hinzufügen & löschen)
 function oeffneSponsorenManager() {
 const user = getAktuellerUser();
 if (!user || user.role !== "Vorstand") return;
@@ -418,7 +411,7 @@ const fileInput = document.createElement("in" + "put");
 fileInput.setAttribute("type", "file");
 fileInput.setAttribute("accept", "image/*");
 fileInput.onchange = async (e) => {
-const file = e.target.files;
+const file = e.target.files.item(0);
 if (!file) return;
 neuesBannerBase64 = await komprimiereBildDatei(file, 700, 0.8);
 previewImg.src = neuesBannerBase64;
