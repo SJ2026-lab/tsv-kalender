@@ -39,6 +39,17 @@ function oeffneTerminFormular(iso) {
   const modal = document.getElementById("termin-modal");
   const feld = document.getElementById("termin-datum");
   if (modal) {
+    if (typeof bearbeitungsTermin !== "undefined") bearbeitungsTermin = null;
+    document.getElementById("editor-sheet-title").textContent = "Neuer Termin";
+    document.getElementById("termin-titel").value = "";
+    document.getElementById("termin-uhrzeit").value = "";
+    document.getElementById("termin-ende").value = "";
+    document.getElementById("termin-ort").value = "";
+    document.getElementById("termin-info").value = "";
+    document.getElementById("termin-msg").textContent = "";
+    document.getElementById("termin-wdh-wrapper").classList.remove("hidden");
+    document.getElementById("editor-save-btn").textContent = "Termin veröffentlichen";
+    document.getElementById("editor-del-btn").classList.add("hidden");
     if (feld) feld.value = iso || window.tsvCalState.gewaehltesDatum;
     modal.classList.remove("hidden");
   }
@@ -264,21 +275,18 @@ function zeigeWoche(container, termine, user) {
                     String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
   const title = document.createElement("h3");
   title.textContent = titelText;
-  prev.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() - 7); renderKalenderAnsicht(); };
-  next.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() + 7); renderKalenderAnsicht(); };
-  header.append(prev, title, next);
-  wBox.appendChild(header);
-
-  const grid3 = document.createElement("div");
-  grid3.className = "week-grid-3";
-  const heute = heuteIso();
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(st.wochenStart);
-    d.setDate(d.getDate() + i);
-    const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-
-    const miniCard = document.createElement("div");
+prev.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() - 7); renderKalenderAnsicht(); };
+next.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() + 7); renderKalenderAnsicht(); };
+header.append(prev, title, next);
+wBox.appendChild(header);
+const grid3 = document.createElement("div");
+grid3.className = "week-grid-3";
+const heute = heuteIso();
+for (let i = 0; i < 7; i++) {
+const d = new Date(st.wochenStart);
+d.setDate(d.getDate() + i);
+const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+const miniCard = document.createElement("div");
 miniCard.className = "week-mini-card" + (iso === heute ? " today-card" : "");
 const headRow = document.createElement("div");
 headRow.className = "week-mini-head";
@@ -303,6 +311,7 @@ miniCard.appendChild(leer);
 tagesTermine.forEach(t => {
 const ev = document.createElement("div");
 ev.className = "week-mini-event";
+ev.style.cursor = "pointer";
 const tDiv = document.createElement("div");
 tDiv.style.cssText = "font-weight:800;color:var(--navy);";
 tDiv.textContent = t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
@@ -314,9 +323,11 @@ mDiv.style.cssText = "color:var(--muted);font-size:9px;";
 mDiv.textContent = t.mannschaft;
 ev.append(tDiv, nDiv, mDiv);
 ev.onclick = () => {
-st.gewaehltesDatum = iso;
-st.tagAngeklickt = true;
-wechseleAnsicht("MONAT");
+if (user.canWrite && typeof oeffneTerminBearbeiten === "function") {
+oeffneTerminBearbeiten(t);
+} else if (typeof zeigeTerminDetailsPopup === "function") {
+zeigeTerminDetailsPopup(t);
+}
 };
 miniCard.appendChild(ev);
 });
