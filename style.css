@@ -451,3 +451,58 @@ max-height: 90vh; overflow-y: auto;
 .badge-admin { background: #fee2e2; color: #b91c1c; }
 .badge-write { background: #fef3c7; color: #b45309; }
 .badge-read { background: #dcfce7; color: #15803d; }
+/* News-Bild (2-Spalten-Layout: Links Bild, Rechts Text) */
+.news-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Bandenwerbung als vollflächiges Werbebanner-Bild */
+.sponsor-banner {
+  position: relative;
+  overflow: hidden;
+  min-height: 76px;
+}
+
+.sponsor-banner.has-image {
+  padding: 0;
+  background: #0f1e3d;
+}
+
+.sponsor-banner-img {
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  display: block;
+}
+
+.sponsor-gear-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(15, 30, 61, 0.75);
+  backdrop-filter: blur(4px);
+  color: white;
+  padding: 0;
+  margin: 0;
+  font-size: 15px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.img-preview-box {
+  width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+}
+
