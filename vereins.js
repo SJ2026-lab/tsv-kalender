@@ -1,5 +1,3 @@
-// vereinsinfos.js – Live-News (Admin) & rotierende Bandenwerbung (Vorstand)
-
 const infoDbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app";
 
 let aktuelleNewsDaten = {
@@ -13,8 +11,11 @@ let sponsorenListe = [];
 let aktuellerSponsorIndex = 0;
 let sponsorTimer = null;
 
-// 1. News & Sponsoren aus Firebase laden
 async function ladeVereinsInfos() {
+  // Sofort Standard-Banner zeichnen, damit nie eine Lücke entsteht
+  zeichneNewsBanner();
+  zeichneSponsorenBanner();
+
   const user = getAktuellerUser();
   if (!user) return;
 
@@ -26,18 +27,12 @@ async function ladeVereinsInfos() {
 
     if (newsRes.ok) {
       const nData = await newsRes.json();
-      if (nData && nData.titel) {
-        aktuelleNewsDaten = nData;
-      }
+      if (nData && nData.titel) aktuelleNewsDaten = nData;
     }
 
     if (sponRes.ok) {
       const sData = await sponRes.json();
-      if (sData) {
-        sponsorenListe = Object.keys(sData).map(id => ({ id, ...sData[id] }));
-      } else {
-        sponsorenListe = [];
-      }
+      sponsorenListe = sData ? Object.keys(sData).map(id => ({ id, ...sData[id] })) : [];
     }
   } catch (e) {}
 
@@ -45,7 +40,6 @@ async function ladeVereinsInfos() {
   zeichneSponsorenBanner();
 }
 
-// 2. News-Karte zeichnen
 function zeichneNewsBanner() {
   const container = document.getElementById("news-slot");
   const user = getAktuellerUser();
@@ -66,11 +60,10 @@ function zeichneNewsBanner() {
   const rightControls = document.createElement("div");
   rightControls.style.cssText = "display:flex;align-items:center;gap:10px;";
 
-  // Nur Admins dürfen News bearbeiten
   if (perms.isAdmin) {
     const editBtn = document.createElement("span");
     editBtn.textContent = "✏️";
-    editBtn.style.cssText = "font-size:15px;cursor:pointer;padding:2px 6px;background:#eef4fc;border-radius:8px;";
+    editBtn.style.cssText = "font-size:15px;cursor:pointer;padding:3px 7px;background:#eef4fc;border-radius:8px;";
     editBtn.onclick = (e) => {
       e.stopPropagation();
       oeffneNewsEditor();
@@ -105,13 +98,10 @@ function zeichneNewsBanner() {
   body.append(thumb, textDiv);
   card.append(head, body);
 
-  // Klick auf Karte öffnet den kompletten Artikel
   card.onclick = () => zeigeNewsVolltext();
-
   container.appendChild(card);
 }
 
-// Vollständigen News-Bericht anzeigen
 function zeigeNewsVolltext() {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -142,7 +132,6 @@ function zeigeNewsVolltext() {
   document.body.appendChild(backdrop);
 }
 
-// Admin-Editor für News-Banner
 function oeffneNewsEditor() {
   const user = getAktuellerUser();
   if (!user) return;
@@ -166,14 +155,13 @@ function oeffneNewsEditor() {
   head.append(h3, closeBtn);
 
   const iconSel = document.createElement("select");
-  const icons = [
+  [
     { val: "⚽", label: "⚽ Fußball / Spielbericht" },
     { val: "🏆", label: "🏆 Turnier / Pokal" },
     { val: "📢", label: "📢 Wichtige Vereins-Info" },
     { val: "🎉", label: "🎉 Vereinsfest / Event" },
     { val: "⚠️", label: "⚠️ Platzsperre / Achtung" }
-  ];
-  icons.forEach(ic => {
+  ].forEach(ic => {
     const opt = document.createElement("option");
     opt.value = ic.val;
     opt.textContent = ic.label;
@@ -239,7 +227,6 @@ function oeffneNewsEditor() {
   document.body.appendChild(backdrop);
 }
 
-// 3. Rotierende Bandenwerbung (Sponsoren-Karussell)
 function zeichneSponsorenBanner() {
   const container = document.getElementById("sponsor-slot");
   const user = getAktuellerUser();
@@ -279,7 +266,6 @@ function zeichneSponsorenBanner() {
 
     banner.append(logoDiv, sloganDiv);
 
-    // Nur Vorstand darf Bandenwerbung verwalten
     if (user.role === "Vorstand") {
       const manageBtn = document.createElement("button");
       manageBtn.type = "button";
@@ -292,7 +278,6 @@ function zeichneSponsorenBanner() {
       banner.appendChild(manageBtn);
     }
 
-    // Klick wechselt manuell zum nächsten Werbepartner
     banner.onclick = () => {
       if (liste.length > 1) {
         aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
@@ -302,22 +287,24 @@ function zeichneSponsorenBanner() {
 
     container.appendChild(banner);
   }
-renderAktuellenSponsor();
-// Automatischer Durchlauf alle 5 Sekunden, wenn mehrere Werbepartner hinterlegt sind
-if (liste.length > 1) {
-sponsorTimer = setInterval(() => {
-if (document.getElementById("sponsor-slot")) {
-aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
-renderAktuellenSponsor();
+
+  renderAktuellenSponsor();
+
+  if (liste.length > 1) {
+    sponsorTimer = setInterval(() => {
+      if (document.getElementById("sponsor-slot")) {
+        aktuellerSponsorIndex = (aktuellerSponsorIndex + 1) % liste.length;
+        renderAktuellenSponsor();
+      }
+    }, 5000);
+  }
 }
-}, 5000);
-}
-}
-// Exklusiver Manager für den Vorstand (Werbepartner hinzufügen & löschen)
+
 function oeffneSponsorenManager() {
-const user = getAktuellerUser();
-if (!user || user.role !== "Vorstand") return;
-const backdrop = document.createElement("div");
+  const user = getAktuellerUser();
+  if (!user || user.role !== "Vorstand") return;
+
+  const backdrop = document.createElement("div");
 backdrop.className = "modal-backdrop";
 const sheet = document.createElement("div");
 sheet.className = "bottom-sheet";
@@ -333,7 +320,6 @@ closeBtn.textContent = "×";
 closeBtn.onclick = () => backdrop.remove();
 head.append(h3, closeBtn);
 sheet.appendChild(head);
-// Bestehende Partner auflisten
 const listDiv = document.createElement("div");
 listDiv.style.marginBottom = "18px";
 function renderPartnerListe() {
@@ -349,8 +335,13 @@ sponsorenListe.forEach(sp => {
 const row = document.createElement("div");
 row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:10px;background:#f8fafc;border-radius:12px;margin-bottom:8px;border:1px solid var(--border);";
 const info = document.createElement("div");
-info.innerHTML = '' + sp.firma + '
-' + sp.slogan + '';
+const stName = document.createElement("strong");
+stName.style.cssText = "font-size:13px;color:var(--navy);display:block;";
+stName.textContent = sp.firma;
+const smText = document.createElement("small");
+smText.style.color = "var(--muted)";
+smText.textContent = sp.slogan;
+info.append(stName, smText);
 const del = document.createElement("button");
 del.type = "button";
 del.className = "btn-danger";
@@ -368,7 +359,6 @@ listDiv.appendChild(row);
 }
 renderPartnerListe();
 sheet.appendChild(listDiv);
-// Neuen Werbepartner hinzufügen
 const subTitle = document.createElement("h4");
 subTitle.style.cssText = "margin:0 0 10px;font-size:14px;color:var(--navy);";
 subTitle.textContent = "+ Neuen Werbepartner hinzufügen";
@@ -376,7 +366,18 @@ const firmaIn = erstelleFeld("text", "sp-firma", "Firmenname (z. B. Metzgerei M�
 const brancheIn = erstelleFeld("text", "sp-branche", "Branche / Zusatz (z. B. Partyservice)");
 const sloganIn = erstelleFeld("text", "sp-slogan", "Werbespruch (z. B. Wir wünschen viel Erfolg!)");
 const farbeSel = document.createElement("select");
-farbeSel.innerHTML = <option value="linear-gradient(135deg, #09152b 0%, #16325c 60%, #14532d 100%)">Vereinsblau & Stadiongrün</option> <option value="linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)">Kräftiges Rot</option> <option value="linear-gradient(135deg, #064e3b 0%, #059669 100%)">Smaragdgrün</option> <option value="linear-gradient(135deg, #1e293b 0%, #334155 100%)">Edles Anthrazit</option> <option value="linear-gradient(135deg, #78350f 0%, #b45309 100%)">Gold / Bronze</option>;
+[
+{ val: "linear-gradient(135deg, #09152b 0%, #16325c 60%, #14532d 100%)", label: "Vereinsblau & Stadiongrün" },
+{ val: "linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)", label: "Kräftiges Rot" },
+{ val: "linear-gradient(135deg, #064e3b 0%, #059669 100%)", label: "Smaragdgrün" },
+{ val: "linear-gradient(135deg, #1e293b 0%, #334155 100%)", label: "Edles Anthrazit" },
+{ val: "linear-gradient(135deg, #78350f 0%, #b45309 100%)", label: "Gold / Bronze" }
+].forEach(f => {
+const o = document.createElement("option");
+o.value = f.val;
+o.textContent = f.label;
+farbeSel.appendChild(o);
+});
 const addBtn = document.createElement("button");
 addBtn.type = "button";
 addBtn.className = "btn-success";
@@ -421,4 +422,3 @@ addBtn
 backdrop.appendChild(sheet);
 document.body.appendChild(backdrop);
 }
-
