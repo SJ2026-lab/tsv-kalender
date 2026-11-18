@@ -90,10 +90,10 @@ function renderLogin() {
   app.innerHTML = "";
 
   const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Kalender</h1><p>Vereins- & Mannschaftstermine</p></div></div>';
+  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>Vereins- & Mannschafts-App</p></div></div>';
 
   const box = el("div", { className: "box" });
-  box.innerHTML = "<h2>Willkommen zurück</h2>";
+  box.innerHTML = '<h2 style="margin:0 0 14px;color:var(--navy);">Willkommen zurück</h2>';
 
   const emailIn = feld("email", "", "E-Mail-Adresse");
   const passIn = feld("password", "", "Passwort");
@@ -131,7 +131,7 @@ function renderRegister() {
   head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
 
   const box = el("div", { className: "box" });
-  box.innerHTML = '<h2>Konto erstellen</h2><p class="info-text">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
+  box.innerHTML = '<h2 style="margin:0 0 10px;color:var(--navy);">Konto erstellen</h2><p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
 
   const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
@@ -179,11 +179,16 @@ function renderDashboard(user) {
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
+  // 1. Header wie auf deinem Bild
   const head = el("div", { className: "app-header" });
   head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
   app.appendChild(head);
 
-  const controlsBar = el("div", { id: "top-controls-bar", className: "top-controls" });
+  // 2. Hauptansicht "Ligen / Kalender"
+  const homeView = el("div", { id: "view-home" });
+
+  // Steuerleiste: Alle Mannschaften ▾ | Monat / Woche
+  const controlsBar = el("div", { className: "top-controls" });
   const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
   filterBtn.innerHTML = '<span id="filter-btn-label">' + getFilterButtonText() + '</span><span>▾</span>';
 
@@ -192,10 +197,11 @@ function renderDashboard(user) {
   const topBtnWoche = el("button", { type: "button", className: "view-toggle-btn", textContent: "Woche" });
   viewGroup.append(topBtnMonat, topBtnWoche);
   controlsBar.append(filterBtn, viewGroup);
-  app.appendChild(controlsBar);
+  homeView.appendChild(controlsBar);
 
+  // Aufklappbare Mehrfachauswahl
   const filterPopover = el("div", { className: "filter-popover hidden" });
-  filterPopover.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">MANNSCHAFTEN AUSWÄHLEN:</div>';
+  filterPopover.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;">MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):</div>';
   const chipGrid = el("div", { className: "multi-chip-grid" });
 
   function aktualisiereFilterChips() {
@@ -204,18 +210,18 @@ function renderDashboard(user) {
       type: "button",
       className: "multi-chip" + (ausgewaehlteMannschaften.length === 0 ? " selected" : ""),
       textContent: "✓ Alle anzeigen"
-    });
-    btnAlle.onclick = () => {
-      ausgewaehlteMannschaften = [];
-      localStorage.setItem("tsv_team_filter", "[]");
-      document.getElementById("filter-btn-label").textContent = getFilterButtonText();
-      aktualisiereFilterChips();
-      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
-    };
-    chipGrid.appendChild(btnAlle);
-
-    MANNSCHAFTEN.forEach(team => {
-      const istAktiv = ausgewaehlteMannschaften.includes(team);
+        anzeigen"
+});
+btnAlle.onclick = () => {
+ausgewaehlteMannschaften = [];
+localStorage.setItem("tsv_team_filter", "[]");
+document.getElementById("filter-btn-label").textContent = getFilterButtonText();
+aktualisiereFilterChips();
+if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+};
+chipGrid.appendChild(btnAlle);
+MANNSCHAFTEN.forEach(team => {
+const istAktiv = ausgewaehlteMannschaften.includes(team);
 const cBtn = el("button", {
 type: "button",
 className: "multi-chip" + (istAktiv ? " selected" : ""),
@@ -239,62 +245,63 @@ aktualisiereFilterChips();
 const closeFilterBtn = el("button", { type: "button", className: "btn-success", style: "padding:10px;margin:0;font-size:13px;", textContent: "Auswahl übernehmen" });
 closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
-app.appendChild(filterPopover);
+homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
+// 3. News-Karte wie auf deinem Bild
+const newsCard = el("div", { className: "news-card" });
+newsCard.innerHTML = <div class="news-header"><h3>News</h3><span style="color:var(--navy);font-weight:800;">›</span></div> <div class="news-body"> <div class="news-thumb">⚽</div> <div class="news-text"> <h4>Spielbericht: Sieg gegen Eintracht Frankfurt</h4> <p>Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht...</p> </div> </div>;
+homeView.appendChild(newsCard);
+// 4. 2-Spalten Kalender + Kommende Events Bereich
 const kalenderBereich = el("div", { id: "termine-liste" });
-const profilBereich = el("div", { id: "profil-bereich", className: "box hidden" });
+homeView.appendChild(kalenderBereich);
+// 5. Sponsoren-Banner wie auf deinem Bild
+const sponsor = el("div", { className: "sponsor-banner" });
+sponsor.innerHTML = <div class="sponsor-logo">TSV Partner<small>Bau & Immobilien</small></div> <div class="sponsor-slogan">Stark im Team –<br>auf und neben dem Platz.</div>;
+homeView.appendChild(sponsor);
+// Weitere Tab-Ansichten (Platzwart, Chat, Profil)
+const platzwartView = el("div", { className: "box hidden" });
+platzwartView.innerHTML = '🛠️ Platzwart & KabinenHier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.';
+const chatView = el("div", { className: "box hidden" });
+chatView.innerHTML = '💬 Mannschafts-ChatHier entsteht euer direkter Vereins- & Trainer-Chat für schnelle Absprachen.';
+const profilView = el("div", { className: "box hidden" });
 const badges = (perms.isAdmin ? 'Admin' : '') +
 (perms.canWrite ? 'Lesen & Schreiben' : 'Nur Lesen');
-profilBereich.innerHTML = 'Mein VereinsprofilE-Mail: ' + user.email + 'Funktion: ' + user.role + '' + (user.team ? 'Mannschaft: ' + user.team + '' : '') + '' + badges + '';
+profilView.innerHTML = 'Mein VereinsprofilE-Mail: ' + user.email + 'Funktion: ' + user.role + '' + (user.team ? 'Mannschaft: ' + user.team + '' : '') + '' + badges + '';
 const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
 logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
-profilBereich.appendChild(logoutBtn);
-app.append(kalenderBereich, profilBereich);
+profilView.appendChild(logoutBtn);
+app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
 baueTerminEditor(app, MANNSCHAFTEN);
 }
+// Untere Navigationsleiste mit den 4 Tabs: Ligen, Platzwart, Chat, Profil
 const nav = el("div", { className: "bottom-nav" });
-const navKalender = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Kalender' });
-const navProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
+const tabLigen = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Ligen' });
+const tabPlatz = el("button", { type: "button", className: "nav-item", innerHTML: '🛠️Platzwart' });
+const tabChat = el("button", { type: "button", className: "nav-item", innerHTML: '💬Chat' });
+const tabProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
+function zeigeTab(aktivBtn, zielView) {
+nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+aktivBtn.classList.add("active");
+[homeView, platzwartView, chatView, profilView].forEach(v => v.classList.add("hidden"));
+zielView.classList.remove("hidden");
+}
+tabLigen.onclick = () => zeigeTab(tabLigen, homeView);
+tabPlatz.onclick = () => zeigeTab(tabPlatz, platzwartView);
+tabChat.onclick = () => zeigeTab(tabChat, chatView);
+tabProfil.onclick = () => zeigeTab(tabProfil, profilView);
 topBtnMonat.onclick = () => {
 topBtnMonat.classList.add("active");
 topBtnWoche.classList.remove("active");
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-controlsBar.classList.remove("hidden");
 if (typeof wechseleAnsicht === "function") wechseleAnsicht("MONAT");
 };
 topBtnWoche.onclick = () => {
 topBtnWoche.classList.add("active");
 topBtnMonat.classList.remove("active");
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-controlsBar.classList.remove("hidden");
 filterPopover.classList.add("hidden");
 if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
 };
-navKalender.onclick = () => {
-navKalender.classList.add("active");
-navProfil.classList.remove("active");
-profilBereich.classList.add("hidden");
-kalenderBereich.classList.remove("hidden");
-controlsBar.classList.remove("hidden");
-};
-navProfil.onclick = () => {
-navProfil.classList.add("active");
-navKalender.classList.remove("active");
-kalenderBereich.classList.add("hidden");
-controlsBar.classList.add("hidden");
-filterPopover.classList.add("hidden");
-profilBereich.classList.remove("hidden");
-};
-nav.append(navKalender);
-if (perms.canWrite) {
-const fab = el("button", { type: "button", className: "nav-fab", textContent: "+" });
-fab.onclick = () => { if (typeof oeffneTerminFormular === "function") oeffneTerminFormular(""); };
-nav.appendChild(fab);
-}
-nav.appendChild(navProfil);
+nav.append(tabLigen, tabPlatz, tabChat, tabProfil);
 app.appendChild(nav);
 if (typeof ladeTermine === "function") ladeTermine();
 }
