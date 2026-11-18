@@ -11,8 +11,7 @@ let aktuelleNewsDaten = { ...STANDARD_NEWS };
 let hatEigeneNews = false;
 
 let sponsorenListe = [];
-let aktuellerSponsorIndex = 0;
-let sponsorTimer = null;
+let sponsorLoopTimer = null;
 
 function komprimiereBildDatei(file, maxBreite, qualitaet) {
   return new Promise((resolve, reject) => {
@@ -183,7 +182,6 @@ function zeigeNewsVolltext() {
   document.body.appendChild(backdrop);
 }
 
-// Admin-Editor für News (Inklusive Löschen-Funktion)
 function oeffneNewsEditor() {
   const user = getAktuellerUser();
   if (!user) return;
@@ -280,7 +278,6 @@ function oeffneNewsEditor() {
     saveBtn
   );
 
-  // Löschen-Button anzeigen, wenn eine eigene News gespeichert ist
   if (hatEigeneNews) {
     const delNewsBtn = document.createElement("button");
     delNewsBtn.type = "button";
@@ -300,31 +297,32 @@ function oeffneNewsEditor() {
       }
     };
     sheet.appendChild(delNewsBtn);
+  }
+
+  sheet.appendChild(msg);
+  backdrop.appendChild(sheet);
+  document.body.appendChild(backdrop);
 }
-sheet.appendChild(msg);
-backdrop.appendChild(sheet);
-document.body.appendChild(backdrop);
-}
-// 2. Bandenwerbung als sanft gleitender Slider (alle 7 Sekunden)
 function zeichneSponsorenBanner() {
 const container = document.getElementById("sponsor-slot");
 const user = getAktuellerUser();
 if (!container || !user) return;
-if (sponsorTimer) {
-clearInterval(sponsorTimer);
-sponsorTimer = null;
+if (sponsorLoopTimer) {
+clearTimeout(sponsorLoopTimer);
+sponsorLoopTimer = null;
 }
 container.innerHTML = "";
-const liste = sponsorenListe.length > 0 ? sponsorenListe : [
+const basisListe = sponsorenListe.length > 0 ? sponsorenListe : [
 { firma: "TSV Partner", slogan: "Hier kann Ihre Bandenwerbung stehen!", bild: "" }
 ];
-if (aktuellerSponsorIndex >= liste.length) aktuellerSponsorIndex = 0;
+// Für nahtlosen Loop: Erstes Element am Ende noch einmal anhängen, falls > 1 Sponsor
+const loopListe = basisListe.length > 1 ? [...basisListe, basisListe.slice(0, 1).pop()] : basisListe;
 const banner = document.createElement("div");
 banner.className = "sponsor-banner";
-if (liste.some(x => x.bild)) banner.classList.add("has-image");
+if (basisListe.some(x => x.bild)) banner.classList.add("has-image");
 const track = document.createElement("div");
 track.className = "sponsor-slider-track";
-liste.forEach(sp => {
+loopListe.forEach(sp => {
 const slide = document.createElement("div");
 slide.className = "sponsor-slide" + (sp.bild ? " has-image" : "");
 if (sp.bild) {
@@ -346,26 +344,18 @@ slide.append(logoDiv, sloganDiv);
 track.appendChild(slide);
 });
 banner.appendChild(track);
-// Kleine Indikator-Punkte unten, wenn mehr als 1 Banner vorhanden ist
+// Indikator-Punkte unten
 const dotsWrap = document.createElement("div");
 dotsWrap.className = "sponsor-dots";
 const dotEls = [];
-if (liste.length > 1) {
-liste.forEach((_, idx) => {
+if (basisListe.length > 1) {
+basisListe.forEach((_, idx) => {
 const dot = document.createElement("span");
-dot.className = "sponsor-dot" + (idx === aktuellerSponsorIndex ? " active" : "");
+dot.className = "sponsor-dot" + (idx === 0 ? " active" : "");
 dotsWrap.appendChild(dot);
 dotEls.push(dot);
 });
 banner.appendChild(dotsWrap);
-}
-function geheZuSlide(index) {
-aktuellerSponsorIndex = index;
-track.style.transform = "translateX(-" + (aktuellerSponsorIndex * 100) + "%)";
-dotEls.forEach((d, i) => {
-if (i === aktuellerSponsorIndex) d.classList.add("active");
-else d.classList.remove("active");
-});
 }
 if (user.role === "Vorstand") {
 const manageBtn = document.createElement("button");
@@ -378,20 +368,38 @@ oeffneSponsorenManager();
 };
 banner.appendChild(manageBtn);
 }
-banner.onclick = () => {
-if (liste.length > 1) {
-geheZuSlide((aktuellerSponsorIndex + 1) % liste.length);
-}
-};
 container.appendChild(banner);
-geheZuSlide(aktuellerSponsorIndex);
-// Entspanntes Durchsliden alle 7 Sekunden
-if (liste.length > 1) {
-sponsorTimer = setInterval(() => {
-if (document.getElementById("sponsor-slot")) {
-geheZuSlide((aktuellerSponsorIndex + 1) % liste.length);
+// Nahtlose Endlosschleife starten, sobald mindestens 2 Werbepartner vorhanden sind
+if (basisListe.length > 1) {
+let pos = 0;
+const slideDauerMs = 800; // 0,8 Sekunden sanftes Gleiten
+const pauseDauerMs = 1000; // Exakt 1 Sekunde Pause voll im Bild
+function aktualisierePunkte(index) {
+const echterIndex = index % basisListe.length;
+dotEls.forEach((d, i) => {
+if (i === echterIndex) d.classList.add("active");
+else d.classList.remove("active");
+});
 }
-}, 7000);
+function naechsterSchritt() {
+if (!document.getElementById("sponsor-slot")) return;
+pos++;
+track.style.transition = "transform " + slideDauerMs + "ms cubic-bezier(0.25, 0.8, 0.25, 1)";
+track.style.transform = "translateX(-" + (pos * 100) + "%)";
+aktualisierePunkte(pos);
+// Wenn wir auf der Kopie des ersten Banners angekommen sind: Nach dem Gleiten unsichtbar auf 0 zurücksetzen
+if (pos === basisListe.length) {
+setTimeout(() => {
+track.style.transition = "none";
+pos = 0;
+track.style.transform = "translateX(0%)";
+}, slideDauerMs);
+}
+// Nach Gleitzeit + exakt 1 Sekunde Pause voll im Bild den nächsten Slide starten
+sponsorLoopTimer = setTimeout(naechsterSchritt, slideDauerMs + pauseDauerMs);
+}
+// Erste Pause von 1 Sekunde voll im Bild, dann startet die Endlosschleife
+sponsorLoopTimer = setTimeout(naechsterSchritt, pauseDauerMs);
 }
 }
 function oeffneSponsorenManager() {
