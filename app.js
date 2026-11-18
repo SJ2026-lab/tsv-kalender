@@ -195,7 +195,6 @@ function renderDashboard(user) {
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
-  // 1. Header
   const head = el("div", { className: "app-header" });
   const brand = el("div", { className: "brand" });
   const crest = el("div", { className: "club-crest", textContent: "TSV" });
@@ -209,7 +208,6 @@ function renderDashboard(user) {
   head.append(brand, roleBadge);
   app.appendChild(head);
 
-  // 2. Hauptansicht "Ligen / Kalender"
   const homeView = el("div", { id: "view-home" });
 
   const controlsBar = el("div", { className: "top-controls" });
@@ -223,8 +221,7 @@ function renderDashboard(user) {
   const topBtnWoche = el("button", { type: "button", className: "view-toggle-btn", textContent: "Woche" });
   viewGroup.append(topBtnMonat, topBtnWoche);
   controlsBar.append(filterBtn, viewGroup);
-  homeView.appendChild(controlsBar);
-// Aufklappbare Mehrfachauswahl
+homeView.appendChild(controlsBar);
 const filterPopover = el("div", { className: "filter-popover hidden" });
 filterPopover.appendChild(el("div", {
 textContent: "MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):",
@@ -273,34 +270,15 @@ closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
 homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
-// 3. News-Karte sauber per DOM
-const newsCard = el("div", { className: "news-card" });
-const nHead = el("div", { className: "news-header" });
-nHead.append(
-el("h3", { textContent: "News" }),
-el("span", { textContent: "›", style: "color:var(--navy);font-weight:800;font-size:18px;" })
-);
-const nBody = el("div", { className: "news-body" });
-const nThumb = el("div", { className: "news-thumb", textContent: "⚽" });
-const nText = el("div", { className: "news-text" });
-nText.append(
-el("h4", { textContent: "Spielbericht: Sieg gegen Eintracht Frankfurt" }),
-el("p", { textContent: "Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht..." })
-);
-nBody.append(nThumb, nText);
-newsCard.append(nHead, nBody);
-homeView.appendChild(newsCard);
-// 4. 2-Spalten Kalender + Kommende Events Bereich
+// Dynamischer News-Slot (aus vereinsinfos.js)
+const newsSlot = el("div", { id: "news-slot" });
+homeView.appendChild(newsSlot);
+// 2-Spalten Kalender + Kommende Events Bereich
 const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
-// 5. Sponsoren-Banner sauber per DOM
-const sponsor = el("div", { className: "sponsor-banner" });
-const spLogo = el("div", { className: "sponsor-logo", textContent: "TSV Partner" });
-spLogo.appendChild(el("small", { textContent: "Bau & Immobilien" }));
-const spSlogan = el("div", { className: "sponsor-slogan", textContent: "Stark im Team – auf und neben dem Platz." });
-sponsor.append(spLogo, spSlogan);
-homeView.appendChild(sponsor);
-// 6. Weitere Tab-Ansichten (Platzwart, Chat, Profil)
+// Dynamischer Sponsoren-Slot (aus vereinsinfos.js)
+const sponsorSlot = el("div", { id: "sponsor-slot" });
+homeView.appendChild(sponsorSlot);
 const platzwartView = el("div", { className: "box hidden" });
 platzwartView.append(
 el("h2", { textContent: "🛠️ Platzwart & Kabinen", style: "margin:0 0 8px;color:var(--navy);" }),
@@ -334,14 +312,13 @@ app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
 baueTerminEditor(app, MANNSCHAFTEN);
 }
-// 7. Untere Navigationsleiste (4 Tabs)
 const nav = el("div", { className: "bottom-nav" });
 function baueNavTab(icon, label, aktiv) {
 const b = el("button", { type: "button", className: "nav-item" + (aktiv ? " active" : "") });
 b.append(el("span", { className: "nav-icon", textContent: icon }), el("span", { textContent: label }));
 return b;
 }
-const tabLigen = baueNavTab("📅", "Kalender", true);
+const tabLigen = baueNavTab("📅", "Ligen", true);
 const tabPlatz = baueNavTab("🛠️", "Platzwart", false);
 const tabChat = baueNavTab("💬", "Chat", false);
 const tabProfil = baueNavTab("👤", "Profil", false);
@@ -368,6 +345,7 @@ if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
 };
 nav.append(tabLigen, tabPlatz, tabChat, tabProfil);
 app.appendChild(nav);
+if (typeof ladeVereinsInfos === "function") ladeVereinsInfos();
 if (typeof ladeTermine === "function") ladeTermine();
 }
 async function starteApp() {
