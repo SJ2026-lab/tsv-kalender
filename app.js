@@ -179,15 +179,12 @@ function renderDashboard(user) {
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
-  // 1. Header wie auf deinem Bild
   const head = el("div", { className: "app-header" });
   head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
   app.appendChild(head);
 
-  // 2. Hauptansicht "Ligen / Kalender"
   const homeView = el("div", { id: "view-home" });
 
-  // Steuerleiste: Alle Mannschaften ▾ | Monat / Woche
   const controlsBar = el("div", { className: "top-controls" });
   const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
   filterBtn.innerHTML = '<span id="filter-btn-label">' + getFilterButtonText() + '</span><span>▾</span>';
@@ -199,7 +196,6 @@ function renderDashboard(user) {
   controlsBar.append(filterBtn, viewGroup);
   homeView.appendChild(controlsBar);
 
-  // Aufklappbare Mehrfachauswahl
   const filterPopover = el("div", { className: "filter-popover hidden" });
   filterPopover.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;">MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):</div>';
   const chipGrid = el("div", { className: "multi-chip-grid" });
@@ -210,16 +206,15 @@ function renderDashboard(user) {
       type: "button",
       className: "multi-chip" + (ausgewaehlteMannschaften.length === 0 ? " selected" : ""),
       textContent: "✓ Alle anzeigen"
-        anzeigen"
-});
-btnAlle.onclick = () => {
-ausgewaehlteMannschaften = [];
-localStorage.setItem("tsv_team_filter", "[]");
-document.getElementById("filter-btn-label").textContent = getFilterButtonText();
-aktualisiereFilterChips();
-if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
-};
-chipGrid.appendChild(btnAlle);
+    });
+    btnAlle.onclick = () => {
+      ausgewaehlteMannschaften = [];
+      localStorage.setItem("tsv_team_filter", "[]");
+      document.getElementById("filter-btn-label").textContent = getFilterButtonText();
+      aktualisiereFilterChips();
+      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+    };
+    chipGrid.appendChild(btnAlle);
 MANNSCHAFTEN.forEach(team => {
 const istAktiv = ausgewaehlteMannschaften.includes(team);
 const cBtn = el("button", {
@@ -247,18 +242,19 @@ closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
 homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
-// 3. News-Karte wie auf deinem Bild
 const newsCard = el("div", { className: "news-card" });
-newsCard.innerHTML = <div class="news-header"><h3>News</h3><span style="color:var(--navy);font-weight:800;">›</span></div> <div class="news-body"> <div class="news-thumb">⚽</div> <div class="news-text"> <h4>Spielbericht: Sieg gegen Eintracht Frankfurt</h4> <p>Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht...</p> </div> </div>;
+newsCard.innerHTML = 'News›' +
+'⚽' +
+'Spielbericht: Sieg gegen Eintracht Frankfurt' +
+'Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht...';
 homeView.appendChild(newsCard);
-// 4. 2-Spalten Kalender + Kommende Events Bereich
 const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
-// 5. Sponsoren-Banner wie auf deinem Bild
 const sponsor = el("div", { className: "sponsor-banner" });
-sponsor.innerHTML = <div class="sponsor-logo">TSV Partner<small>Bau & Immobilien</small></div> <div class="sponsor-slogan">Stark im Team –<br>auf und neben dem Platz.</div>;
+sponsor.innerHTML = 'TSV PartnerBau & Immobilien' +
+'Stark im Team –
+auf und neben dem Platz.';
 homeView.appendChild(sponsor);
-// Weitere Tab-Ansichten (Platzwart, Chat, Profil)
 const platzwartView = el("div", { className: "box hidden" });
 platzwartView.innerHTML = '🛠️ Platzwart & KabinenHier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.';
 const chatView = el("div", { className: "box hidden" });
@@ -266,7 +262,11 @@ chatView.innerHTML = '💬 Mannschafts-ChatHier entsteht euer direkter Vereins- 
 const profilView = el("div", { className: "box hidden" });
 const badges = (perms.isAdmin ? 'Admin' : '') +
 (perms.canWrite ? 'Lesen & Schreiben' : 'Nur Lesen');
-profilView.innerHTML = 'Mein VereinsprofilE-Mail: ' + user.email + 'Funktion: ' + user.role + '' + (user.team ? 'Mannschaft: ' + user.team + '' : '') + '' + badges + '';
+profilView.innerHTML = 'Mein Vereinsprofil' +
+'E-Mail: ' + user.email + '' +
+'Funktion: ' + user.role + '' +
+(user.team ? 'Mannschaft: ' + user.team + '' : '') +
+'' + badges + '';
 const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
 logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
 profilView.appendChild(logoutBtn);
@@ -274,7 +274,6 @@ app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
 baueTerminEditor(app, MANNSCHAFTEN);
 }
-// Untere Navigationsleiste mit den 4 Tabs: Ligen, Platzwart, Chat, Profil
 const nav = el("div", { className: "bottom-nav" });
 const tabLigen = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Ligen' });
 const tabPlatz = el("button", { type: "button", className: "nav-item", innerHTML: '🛠️Platzwart' });
