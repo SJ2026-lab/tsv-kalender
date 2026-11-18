@@ -341,7 +341,7 @@ const b = el("button", { type: "button", className: "nav-item" + (aktiv ? " acti
 b.append(el("span", { className: "nav-icon", textContent: icon }), el("span", { textContent: label }));
 return b;
 }
-const tabLigen = baueNavTab("📅", "Ligen", true);
+const tabLigen = baueNavTab("📅", "Kalender", true);
 const tabPlatz = baueNavTab("🛠️", "Platzwart", false);
 const tabChat = baueNavTab("💬", "Chat", false);
 const tabProfil = baueNavTab("👤", "Profil", false);
