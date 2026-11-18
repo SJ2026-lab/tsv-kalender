@@ -80,7 +80,6 @@ function zeigeSplitMonat(container, termine, user) {
   const split = document.createElement("div");
   split.className = "split-grid";
 
-  // LINKE KARTE: Kalenderblatt + grünes '+'
   const calCard = document.createElement("div");
   calCard.className = "cal-card";
 
@@ -163,7 +162,6 @@ function zeigeSplitMonat(container, termine, user) {
     calCard.appendChild(fabInline);
   }
 
-  // RECHTE KARTE: Kommende Events
   const evCard = document.createElement("div");
   evCard.className = "events-card";
 
@@ -175,11 +173,11 @@ function zeigeSplitMonat(container, termine, user) {
     boxTitel = "Termine am " + dLesbar;
     anzeigeTermine = termine.filter(x => x.datum === st.gewaehltesDatum);
   } else {
-    anzeigeTermine = termine.filter(x => x.datum >= heute).slice(0, 4);
+    anzeigeTermine = termine.filter(x => x.datum >= heute);
   }
 
   const evHead = document.createElement("div");
-  evHead.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;";
+  evHead.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0;";
   const h3El = document.createElement("h3");
   h3El.style.margin = "0";
   h3El.textContent = boxTitel;
@@ -194,11 +192,14 @@ function zeigeSplitMonat(container, termine, user) {
   }
   evCard.appendChild(evHead);
 
+  const scrollArea = document.createElement("div");
+  scrollArea.className = "events-scroll-list";
+
   if (anzeigeTermine.length === 0) {
     const leer = document.createElement("p");
     leer.style.cssText = "font-size:12px;color:var(--muted);margin:0;";
     leer.textContent = "Keine Termine eingetragen.";
-    evCard.appendChild(leer);
+    scrollArea.appendChild(leer);
   } else {
     anzeigeTermine.forEach(t => {
       const row = document.createElement("div");
@@ -232,10 +233,11 @@ function zeigeSplitMonat(container, termine, user) {
       }
 
       row.append(iconDiv, detDiv);
-      evCard.appendChild(row);
+      scrollArea.appendChild(row);
     });
   }
 
+  evCard.appendChild(scrollArea);
   split.append(calCard, evCard);
   container.appendChild(split);
 }
@@ -277,10 +279,9 @@ function zeigeWoche(container, termine, user) {
     const iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 
     const miniCard = document.createElement("div");
-    miniCard.className = "week-mini-card" + (iso === heute ? " today-card" : "");
-
-    const headRow = document.createElement("div");
-    headRow.className = "week-mini-head";
+miniCard.className = "week-mini-card" + (iso === heute ? " today-card" : "");
+const headRow = document.createElement("div");
+headRow.className = "week-mini-head";
 const daySpan = document.createElement("span");
 daySpan.textContent = st.wochentage[i] + " " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".";
 headRow.appendChild(daySpan);
