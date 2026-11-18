@@ -1,3 +1,4 @@
+```javascript
 window.tsvCalState = {
   dbHost: "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app",
   monateLang: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
@@ -7,7 +8,8 @@ window.tsvCalState = {
   datenStand: "",
   liveStream: null,
   ansicht: "MONAT",
-  gewaehltesDatum: new Date().toISOString().slice(0, 10),
+  gewaehltesDatum: heuteIso(),
+  tagAngeklickt: false,
   jahr: new Date().getFullYear(),
   monat: new Date().getMonth(),
   wochenStart: getMontag(new Date())
@@ -39,7 +41,7 @@ function oeffneTerminFormular(iso) {
   const modal = document.getElementById("termin-modal");
   const feld = document.getElementById("termin-datum");
   if (modal) {
-    if (feld && iso) feld.value = iso;
+    if (feld) feld.value = iso || window.tsvCalState.gewaehltesDatum;
     modal.classList.remove("hidden");
   }
 }
@@ -53,6 +55,13 @@ function filtereNachAuswahl(termineListe) {
   );
 }
 
+function getEventIcon(titel) {
+  const t = (titel || "").toLowerCase();
+  if (t.includes("spiel") || t.includes("vs") || t.includes("turnier")) return "👟";
+  if (t.includes("sitzung") || t.includes("besprechung") || t.includes("versammlung")) return "👤";
+  return "⚽";
+}
+
 function renderKalenderAnsicht() {
   const container = document.getElementById("termine-liste");
   const user = getAktuellerUser();
@@ -62,18 +71,23 @@ function renderKalenderAnsicht() {
   container.innerHTML = "";
 
   if (window.tsvCalState.ansicht === "MONAT") {
-    zeigeMonat(container, termine, user);
+    zeigeSplitMonat(container, termine, user);
   } else {
     zeigeWoche(container, termine, user);
   }
 }
 
-function zeigeMonat(container, termine, user) {
+// 2-SPALTEN-DESIGN WIE AUF DEM BILD: LINKS MONAT + '+', RECHTS KOMMENDE EVENTS
+function zeigeSplitMonat(container, termine, user) {
   const st = window.tsvCalState;
-  const calBox = document.createElement("div");
-  calBox.className = "box";
-  calBox.style.marginBottom = "14px";
+  const split = document.createElement("div");
+  split.className = "split-grid";
 
+  // LINKE KARTE: Kalenderblatt + grünes '+' unten rechts
+  const calCard = document.createElement("div");
+  calCard.className = "cal-card";
+
+  const topPart = document.createElement("div");
   const header = document.createElement("div");
   header.className = "cal-header";
   const prev = Object.assign(document.createElement("button"), { type: "button", className: "cal-nav-btn", textContent: "‹" });
@@ -82,12 +96,12 @@ function zeigeMonat(container, termine, user) {
   prev.onclick = () => { st.monat--; if (st.monat < 0) { st.monat = 11; st.jahr--; } renderKalenderAnsicht(); };
   next.onclick = () => { st.monat++; if (st.monat > 11) { st.monat = 0; st.jahr++; } renderKalenderAnsicht(); };
   header.append(prev, title, next);
-  calBox.appendChild(header);
+  topPart.appendChild(header);
 
   const wd = document.createElement("div");
   wd.className = "cal-weekdays";
   wd.innerHTML = st.wochentage.map(w => "<div>" + w + "</div>").join("");
-  calBox.appendChild(wd);
+  topPart.appendChild(wd);
 
   const grid = document.createElement("div");
   grid.className = "cal-grid";
@@ -100,40 +114,92 @@ function zeigeMonat(container, termine, user) {
 
   for (let t = 1; t <= tage; t++) {
     const iso = st.jahr + "-" + String(st.monat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
-    const count = termine.filter(x => x.datum === iso).length;
+    const hasEvent = termine.some(x => x.datum === iso);
     const cell = document.createElement("div");
     cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === st.gewaehltesDatum ? " selected" : "");
-    const dots = count > 0 ? '<div class="cal-dots">' + '<span class="cal-dot"></span>'.repeat(Math.min(count, 3)) + '</div>' : "";
-    cell.innerHTML = "<span>" + t + "</span>" + dots;
-    cell.onclick = () => { st.gewaehltesDatum = iso; renderKalenderAnsicht(); };
+    cell.innerHTML = "<span>" + t + "</span>" + (hasEvent ? '<span class="cal-dot-mini"></span>' : "");
+    cell.onclick = () => {
+      st.gewaehltesDatum = iso;
+      st.tagAngeklickt = true;
+      renderKalenderAnsicht();
+    };
     grid.appendChild(cell);
   }
-  calBox.appendChild(grid);
-  container.appendChild(calBox);
+  topPart.appendChild(grid);
+  calCard.appendChild(topPart);
 
-  const detBox = document.createElement("div");
-  detBox.className = "box";
-  const lesbar = st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + "." + st.gewaehltesDatum.slice(0, 4);
-  detBox.innerHTML = '<h3 style="margin:0 0 12px;font-size:16px;">Termine am ' + lesbar + '</h3>';
-
+  // Grünes '+' unten rechts in der Kalender-Karte (nur Trainer & Admins)
   if (user.canWrite) {
-    const addBtn = Object.assign(document.createElement("button"), {
-      type: "button", className: "btn-success", style: "margin-bottom:14px;",
-      textContent: "+ Termin am " + st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + ". hinzufügen"
-    });
-    addBtn.onclick = () => oeffneTerminFormular(st.gewaehltesDatum);
-    detBox.appendChild(addBtn);
+    const fabInline = document.createElement("button");
+    fabInline.type = "button";
+    fabInline.className = "cal-fab-inline";
+    fabInline.textContent = "+";
+    fabInline.onclick = () => oeffneTerminFormular(st.gewaehltesDatum);
+    calCard.appendChild(fabInline);
   }
 
-  const liste = termine.filter(x => x.datum === st.gewaehltesDatum);
-  if (liste.length === 0) {
-    detBox.appendChild(Object.assign(document.createElement("p"), { style: "color:#64748b;font-size:14px;margin:0;", textContent: "Keine Termine an diesem Tag." }));
+  // RECHTE KARTE: Kommende Events (oder Termine des angeklickten Tages)
+  const evCard = document.createElement("div");
+  evCard.className = "events-card";
+
+  let anzeigeTermine = [];
+  let boxTitel = "Kommende Events";
+
+  if (st.tagAngeklickt) {
+    const dLesbar = st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + ".";
+    boxTitel = "Termine am " + dLesbar;
+    anzeigeTermine = termine.filter(x => x.datum === st.gewaehltesDatum);
   } else {
-    liste.forEach(x => detBox.appendChild(erstelleKarte(x, user)));
+    anzeigeTermine = termine.filter(x => x.datum >= heute).slice(0, 4);
   }
-  container.appendChild(detBox);
+
+  const evHead = document.createElement("div");
+  evHead.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;";
+  evHead.innerHTML = '<h3 style="margin:0;">' + boxTitel + '</h3>';
+
+  if (st.tagAngeklickt) {
+    const resetLink = document.createElement("span");
+    resetLink.textContent = "Alle";
+    resetLink.style.cssText = "font-size:11px;color:var(--navy);font-weight:700;cursor:pointer;text-decoration:underline;";
+    resetLink.onclick = () => { st.tagAngeklickt = false; renderKalenderAnsicht(); };
+    evHead.appendChild(resetLink);
+  }
+  evCard.appendChild(evHead);
+
+  if (anzeigeTermine.length === 0) {
+    const leer = document.createElement("p");
+    leer.style.cssText = "font-size:12px;color:var(--muted);margin:0;";
+    leer.textContent = "Keine Termine eingetragen.";
+    evCard.appendChild(leer);
+  } else {
+    anzeigeTermine.forEach(t => {
+      const row = document.createElement("div");
+      row.className = "mini-event-row";
+      const dStr = t.datum.slice(8, 10) + "." + t.datum.slice(5, 7) + "." + t.datum.slice(0, 4);
+      const zStr = t.endzeit ? t.uhrzeit + "–" + t.endzeit : t.uhrzeit + " Uhr";
+
+      row.innerHTML = '<div class="ev-icon">' + getEventIcon(t.titel) + '</div>' +
+        '<div class="ev-details">' +
+        '<div class="ev-title">' + t.titel + ' - ' + t.mannschaft + '</div>' +
+        '<div class="ev-sub">' + dStr + ', ' + zStr + (t.ort ? ' • ' + t.ort : '') + '</div>' +
+        '</div>';
+
+      if (user.canWrite) {
+        const delSpan = document.createElement("span");
+        delSpan.className = "ev-del-link";
+        delSpan.textContent = "Löschen";
+        delSpan.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
+        row.querySelector(".ev-details").appendChild(delSpan);
+      }
+      evCard.appendChild(row);
+    });
+  }
+
+  split.append(calCard, evCard);
+  container.appendChild(split);
 }
 
+// WOCHENÜBERSICHT (3 Spalten nebeneinander)
 function zeigeWoche(container, termine, user) {
   const st = window.tsvCalState;
   const wBox = document.createElement("div");
@@ -168,75 +234,45 @@ function zeigeWoche(container, termine, user) {
 
     const headRow = document.createElement("div");
     headRow.className = "week-mini-head";
-    headRow.innerHTML = '<span>' + st.wochentage[i] + ' ' + String(d.getDate()).padStart(2, "0") + '.' + String(d.getMonth() + 1).padStart(2, "0") + '.</span>';
-
-    if (user.canWrite) {
-      const plus = document.createElement("span");
-      plus.textContent = "+";
-      plus.style.cssText = "color:var(--blue);font-size:15px;cursor:pointer;padding:0 3px;";
-      plus.onclick = () => oeffneTerminFormular(iso);
-      headRow.appendChild(plus);
-    }
-    miniCard.appendChild(headRow);
-
-    const tagesTermine = termine.filter(x => x.datum === iso);
-    if (tagesTermine.length === 0) {
-      const leer = document.createElement("div");
-      leer.style.cssText = "font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;";
-      leer.textContent = "Frei";
-      miniCard.appendChild(leer);
-    } else {
-      tagesTermine.forEach(t => {
-        const ev = document.createElement("div");
-        ev.className = "week-mini-event";
-        ev.innerHTML = '<div class="time">' + t.uhrzeit + (t.endzeit ? '-' + t.endzeit : '') + '</div>' +
-                       '<div class="title">' + t.titel + '</div>' +
-                       '<div class="team">' + t.mannschaft + '</div>';
-        ev.onclick = () => {
-          st.gewaehltesDatum = iso;
-          const topBtns = document.querySelectorAll(".view-toggle-btn");
-          if (topBtns.length >= 2) {
-            topBtns.classList.add("active");
-            topBtns.classList.remove("active");
-          }
-          wechseleAnsicht("MONAT");
-        };
-        miniCard.appendChild(ev);
-      });
-    }
-
-    grid3.appendChild(miniCard);
-  }
-
-  wBox.appendChild(grid3);
-  container.appendChild(wBox);
-}
-
-function erstelleKarte(t, user) {
-  const st = window.tsvCalState;
-  const dStr = t.datum || "";
-  const tag = dStr.slice(8, 10) || "--";
-  const mon = st.monateKurz[parseInt(dStr.slice(5, 7), 10) - 1] || "---";
-  const card = document.createElement("div");
-  card.className = "event-card";
-
-  const serieBadge = t.serieId ? '<span class="team-tag" style="background:#fef3c7;color:#92400e;margin-left:4px;">🔁 Serie</span>' : "";
-  const zeitText = t.endzeit ? t.uhrzeit + " – " + t.endzeit + " Uhr" : t.uhrzeit + " Uhr";
-
-  card.innerHTML = '<div class="date-badge"><div class="day">' + tag + '</div><div class="month">' + mon + '</div></div>' +
-    '<div class="event-content"><div><span class="team-tag">' + t.mannschaft + '</span>' + serieBadge + '</div>' +
-    '<h3 class="event-title">' + t.titel + '</h3>' +
-'🕒 ' + zeitText + '' + (t.ort ? '📍 ' + t.ort + '' : '') + '' +
-(t.info ? '' + t.info + '' : '') + '';
+    headRow.innerHTML = '' + st.wochentage[i] + ' ' + String(d.getDate()).padStart(2, "0") + '.' + String(d.getMonth() + 1).padStart(2, "0") + '.';
 if (user.canWrite) {
-const delBtn = document.createElement("button");
-delBtn.type = "button";
-delBtn.className = "btn-delete-small";
-delBtn.textContent = "Löschen";
-delBtn.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
-card.querySelector(".event-content").appendChild(delBtn);
+const plus = document.createElement("span");
+plus.textContent = "+";
+plus.style.cssText = "color:var(--navy);font-size:15px;cursor:pointer;padding:0 3px;";
+plus.onclick = () => oeffneTerminFormular(iso);
+headRow.appendChild(plus);
 }
-return card;
+miniCard.appendChild(headRow);
+const tagesTermine = termine.filter(x => x.datum === iso);
+if (tagesTermine.length === 0) {
+const leer = document.createElement("div");
+leer.style.cssText = "font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;";
+leer.textContent = "Frei";
+miniCard.appendChild(leer);
+} else {
+tagesTermine.forEach(t => {
+const ev = document.createElement("div");
+ev.className = "week-mini-event";
+ev.innerHTML = '' + t.uhrzeit + (t.endzeit ? '-' + t.endzeit : '') + '' +
+'' + t.titel + '' +
+'' + t.mannschaft + '';
+ev.onclick = () => {
+st.gewaehltesDatum = iso;
+st.tagAngeklickt = true;
+const topBtns = document.querySelectorAll(".view-toggle-btn");
+if (topBtns.length >= 2) {
+topBtns.classList.add("active");
+topBtns.classList.remove("active");
+}
+wechseleAnsicht("MONAT");
+};
+miniCard.appendChild(ev);
+});
+}
+grid3.appendChild(miniCard);
+}
+wBox.appendChild(grid3);
+container.appendChild(wBox);
 }
 async function ladeTermine(stillesUpdate = false) {
 const st = window.tsvCalState;
