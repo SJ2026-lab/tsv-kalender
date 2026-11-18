@@ -90,10 +90,15 @@ function renderLogin() {
   app.innerHTML = "";
 
   const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>Vereins- & Mannschafts-App</p></div></div>';
+  const brand = el("div", { className: "brand" });
+  const crest = el("div", { className: "club-crest", textContent: "TSV" });
+  const titles = el("div");
+  titles.append(el("h1", { textContent: "TSV Termine" }), el("p", { textContent: "Vereins- & Mannschafts-App" }));
+  brand.append(crest, titles);
+  head.appendChild(brand);
 
   const box = el("div", { className: "box" });
-  box.innerHTML = '<h2 style="margin:0 0 14px;color:var(--navy);">Willkommen zurück</h2>';
+  box.appendChild(el("h2", { textContent: "Willkommen zurück", style: "margin:0 0 14px;color:var(--navy);" }));
 
   const emailIn = feld("email", "", "E-Mail-Adresse");
   const passIn = feld("password", "", "Passwort");
@@ -128,16 +133,27 @@ function renderRegister() {
   app.innerHTML = "";
 
   const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>Mitglied werden</h1><p>Einmalige Registrierung</p></div></div>';
+  const brand = el("div", { className: "brand" });
+  const crest = el("div", { className: "club-crest", textContent: "TSV" });
+  const titles = el("div");
+  titles.append(el("h1", { textContent: "Mitglied werden" }), el("p", { textContent: "Einmalige Registrierung" }));
+  brand.append(crest, titles);
+  head.appendChild(brand);
 
   const box = el("div", { className: "box" });
-  box.innerHTML = '<h2 style="margin:0 0 10px;color:var(--navy);">Konto erstellen</h2><p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Gib das <strong>Vereinspasswort</strong> ein und wähle deine Funktion.</p>';
+  box.append(
+    el("h2", { textContent: "Konto erstellen", style: "margin:0 0 10px;color:var(--navy);" }),
+    el("p", { textContent: "Gib das Vereinspasswort ein und wähle deine Funktion.", style: "font-size:13px;color:var(--muted);margin:0 0 14px;" })
+  );
 
   const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
-  roleSel.innerHTML = '<option value="">-- Funktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
+  roleSel.appendChild(el("option", { value: "", textContent: "-- Funktion wählen --" }));
+  ROLLEN.forEach(r => roleSel.appendChild(el("option", { value: r, textContent: r })));
+
   const teamSel = el("select");
-  teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+  teamSel.appendChild(el("option", { value: "", textContent: "-- Mannschaft wählen --" }));
+  MANNSCHAFTEN.forEach(m => teamSel.appendChild(el("option", { value: m, textContent: m })));
 
   roleSel.onchange = () => { teamSel.style.display = roleSel.value === "Fan" ? "none" : "block"; };
 
@@ -179,15 +195,28 @@ function renderDashboard(user) {
   app.innerHTML = "";
   const perms = getPermissions(user.role);
 
+  // 1. Header
   const head = el("div", { className: "app-header" });
-  head.innerHTML = '<div class="brand"><div class="club-crest">TSV</div><div><h1>TSV Termine</h1><p>' + (user.team ? user.team : "Gesamtverein") + '</p></div></div><span class="role-pill-mini">' + user.role + '</span>';
+  const brand = el("div", { className: "brand" });
+  const crest = el("div", { className: "club-crest", textContent: "TSV" });
+  const titles = el("div");
+  titles.append(
+    el("h1", { textContent: "TSV Termine" }),
+    el("p", { textContent: user.team ? user.team : "Gesamtverein" })
+  );
+  brand.append(crest, titles);
+  const roleBadge = el("span", { className: "role-pill-mini", textContent: user.role });
+  head.append(brand, roleBadge);
   app.appendChild(head);
 
+  // 2. Hauptansicht "Ligen / Kalender"
   const homeView = el("div", { id: "view-home" });
 
   const controlsBar = el("div", { className: "top-controls" });
   const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
-  filterBtn.innerHTML = '<span id="filter-btn-label">' + getFilterButtonText() + '</span><span>▾</span>';
+  const filterLabel = el("span", { id: "filter-btn-label", textContent: getFilterButtonText() });
+  const filterArrow = el("span", { textContent: "▾" });
+  filterBtn.append(filterLabel, filterArrow);
 
   const viewGroup = el("div", { className: "view-toggle-group" });
   const topBtnMonat = el("button", { type: "button", className: "view-toggle-btn active", textContent: "Monat" });
@@ -195,25 +224,27 @@ function renderDashboard(user) {
   viewGroup.append(topBtnMonat, topBtnWoche);
   controlsBar.append(filterBtn, viewGroup);
   homeView.appendChild(controlsBar);
-
-  const filterPopover = el("div", { className: "filter-popover hidden" });
-  filterPopover.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;">MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):</div>';
-  const chipGrid = el("div", { className: "multi-chip-grid" });
-
-  function aktualisiereFilterChips() {
-    chipGrid.innerHTML = "";
-    const btnAlle = el("button", {
-      type: "button",
-      className: "multi-chip" + (ausgewaehlteMannschaften.length === 0 ? " selected" : ""),
-      textContent: "✓ Alle anzeigen"
-    });
-    btnAlle.onclick = () => {
-      ausgewaehlteMannschaften = [];
-      localStorage.setItem("tsv_team_filter", "[]");
-      document.getElementById("filter-btn-label").textContent = getFilterButtonText();
-      aktualisiereFilterChips();
-      if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
-    };
+// Aufklappbare Mehrfachauswahl
+const filterPopover = el("div", { className: "filter-popover hidden" });
+filterPopover.appendChild(el("div", {
+textContent: "MANNSCHAFTEN AUSWÄHLEN (MEHRFACH MÖGLICH):",
+style: "font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;"
+}));
+const chipGrid = el("div", { className: "multi-chip-grid" });
+function aktualisiereFilterChips() {
+chipGrid.innerHTML = "";
+const btnAlle = el("button", {
+type: "button",
+className: "multi-chip" + (ausgewaehlteMannschaften.length === 0 ? " selected" : ""),
+textContent: "✓ Alle anzeigen"
+});
+btnAlle.onclick = () => {
+ausgewaehlteMannschaften = [];
+localStorage.setItem("tsv_team_filter", "[]");
+document.getElementById("filter-btn-label").textContent = getFilterButtonText();
+aktualisiereFilterChips();
+if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
+};
 chipGrid.appendChild(btnAlle);
 MANNSCHAFTEN.forEach(team => {
 const istAktiv = ausgewaehlteMannschaften.includes(team);
@@ -242,30 +273,60 @@ closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
 homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
+// 3. News-Karte sauber per DOM
 const newsCard = el("div", { className: "news-card" });
-newsCard.innerHTML = 'News›' +
-'⚽' +
-'Spielbericht: Sieg gegen Eintracht Frankfurt' +
-'Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht...';
+const nHead = el("div", { className: "news-header" });
+nHead.append(
+el("h3", { textContent: "News" }),
+el("span", { textContent: "›", style: "color:var(--navy);font-weight:800;font-size:18px;" })
+);
+const nBody = el("div", { className: "news-body" });
+const nThumb = el("div", { className: "news-thumb", textContent: "⚽" });
+const nText = el("div", { className: "news-text" });
+nText.append(
+el("h4", { textContent: "Spielbericht: Sieg gegen Eintracht Frankfurt" }),
+el("p", { textContent: "Unsere Mannschaft dominierte das Spiel mit 3:1. Hier geht es zum ausführlichen Bericht..." })
+);
+nBody.append(nThumb, nText);
+newsCard.append(nHead, nBody);
 homeView.appendChild(newsCard);
+// 4. 2-Spalten Kalender + Kommende Events Bereich
 const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
+// 5. Sponsoren-Banner sauber per DOM
 const sponsor = el("div", { className: "sponsor-banner" });
-sponsor.innerHTML = 'TSV PartnerBau & Immobilien' +
-'Stark im Team – auf und neben dem Platz.';
+const spLogo = el("div", { className: "sponsor-logo", textContent: "TSV Partner" });
+spLogo.appendChild(el("small", { textContent: "Bau & Immobilien" }));
+const spSlogan = el("div", { className: "sponsor-slogan", textContent: "Stark im Team – auf und neben dem Platz." });
+sponsor.append(spLogo, spSlogan);
 homeView.appendChild(sponsor);
+// 6. Weitere Tab-Ansichten (Platzwart, Chat, Profil)
 const platzwartView = el("div", { className: "box hidden" });
-platzwartView.innerHTML = '🛠️ Platzwart & KabinenHier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.';
+platzwartView.append(
+el("h2", { textContent: "🛠️ Platzwart & Kabinen", style: "margin:0 0 8px;color:var(--navy);" }),
+el("p", { textContent: "Hier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.", style: "font-size:14px;color:var(--muted);margin:0;" })
+);
 const chatView = el("div", { className: "box hidden" });
-chatView.innerHTML = '💬 Mannschafts-ChatHier entsteht euer direkter Vereins- & Trainer-Chat für schnelle Absprachen.';
+chatView.append(
+el("h2", { textContent: "💬 Mannschafts-Chat", style: "margin:0 0 8px;color:var(--navy);" }),
+el("p", { textContent: "Hier entsteht euer direkter Vereins- & Trainer-Chat für schnelle Absprachen.", style: "font-size:14px;color:var(--muted);margin:0;" })
+);
 const profilView = el("div", { className: "box hidden" });
-const badges = (perms.isAdmin ? 'Admin' : '') +
-(perms.canWrite ? 'Lesen & Schreiben' : 'Nur Lesen');
-profilView.innerHTML = 'Mein Vereinsprofil' +
-'E-Mail: ' + user.email + '' +
-'Funktion: ' + user.role + '' +
-(user.team ? 'Mannschaft: ' + user.team + '' : '') +
-'' + badges + '';
+profilView.append(
+el("h2", { textContent: "Mein Vereinsprofil", style: "margin:0 0 12px;color:var(--navy);" }),
+el("p", { textContent: "E-Mail: " + user.email, style: "font-size:14px;margin:0 0 8px;font-weight:600;" }),
+el("p", { textContent: "Funktion: " + user.role, style: "font-size:14px;margin:0 0 8px;font-weight:600;" })
+);
+if (user.team) {
+profilView.appendChild(el("p", { textContent: "Mannschaft: " + user.team, style: "font-size:14px;margin:0 0 12px;font-weight:600;" }));
+}
+const badgeRow = el("div", { style: "margin-bottom:20px;" });
+if (perms.isAdmin) badgeRow.appendChild(el("span", { className: "badge badge-admin", textContent: "Admin" }));
+badgeRow.appendChild(el("span", {
+className: perms.canWrite ? "badge badge-write" : "badge badge-read",
+textContent: perms.canWrite ? "Lesen & Schreiben" : "Nur Lesen"
+}));
+profilView.appendChild(badgeRow);
 const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
 logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
 profilView.appendChild(logoutBtn);
@@ -273,11 +334,17 @@ app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
 baueTerminEditor(app, MANNSCHAFTEN);
 }
+// 7. Untere Navigationsleiste (4 Tabs)
 const nav = el("div", { className: "bottom-nav" });
-const tabLigen = el("button", { type: "button", className: "nav-item active", innerHTML: '📅Ligen' });
-const tabPlatz = el("button", { type: "button", className: "nav-item", innerHTML: '🛠️Platzwart' });
-const tabChat = el("button", { type: "button", className: "nav-item", innerHTML: '💬Chat' });
-const tabProfil = el("button", { type: "button", className: "nav-item", innerHTML: '👤Profil' });
+function baueNavTab(icon, label, aktiv) {
+const b = el("button", { type: "button", className: "nav-item" + (aktiv ? " active" : "") });
+b.append(el("span", { className: "nav-icon", textContent: icon }), el("span", { textContent: label }));
+return b;
+}
+const tabLigen = baueNavTab("📅", "Ligen", true);
+const tabPlatz = baueNavTab("🛠️", "Platzwart", false);
+const tabChat = baueNavTab("💬", "Chat", false);
+const tabProfil = baueNavTab("👤", "Profil", false);
 function zeigeTab(aktivBtn, zielView) {
 nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
 aktivBtn.classList.add("active");
