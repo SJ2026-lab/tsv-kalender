@@ -29,10 +29,40 @@ async function speichereTermin() {
   }
 
   msg.style.color = "#475569";
-  msg.textContent = wdh > 1 ? "Speichere " + wdh + " wöchentliche Termine..." : "Speichere Termin...";
-  const serieId = wdh > 1 ? "serie_" + Date.now() : "";
 
   try {
+    // FALL A: Bestehenden Termin bearbeiten (PATCH)
+    if (typeof bearbeitungsTermin !== "undefined" && bearbeitungsTermin !== null) {
+      msg.textContent = "Speichere Änderungen...";
+      const url = st.dbHost + "/termine/" + bearbeitungsTermin.id + ".json?auth=" + user.idToken;
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titel,
+          datum,
+          uhrzeit,
+          endzeit,
+          mannschaft,
+          ort,
+          info,
+          bearbeitetVon: user.email
+        })
+      });
+      if (!response.ok) throw new Error("Status " + response.status);
+
+      bearbeitungsTermin = null;
+      document.getElementById("termin-modal").classList.add("hidden");
+      msg.textContent = "";
+      st.gewaehltesDatum = datum;
+      ladeTermine(true);
+      return;
+    }
+
+    // FALL B: Neuen Termin (oder Serie) anlegen (POST)
+    msg.textContent = wdh > 1 ? "Speichere " + wdh + " wöchentliche Termine..." : "Speichere Termin...";
+    const serieId = wdh > 1 ? "serie_" + Date.now() : "";
+
     for (let i = 0; i < wdh; i++) {
       const terminDatum = addiereTage(datum, i * 7);
       const response = await fetch(st.dbHost + "/termine.json?auth=" + user.idToken, {
