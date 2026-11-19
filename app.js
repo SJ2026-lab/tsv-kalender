@@ -217,7 +217,7 @@ function renderDashboard(user) {
   app.innerHTML = "";
 
   if (!user.assignments) {
-  user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
+user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
 }
 const perms = getPermissions(user);
 user.canWrite = perms.canWrite;
@@ -247,6 +247,10 @@ infoBanner.textContent = "⏳ Offene Freigabe für: " + offeneEigene.map(a => a.
 app.appendChild(infoBanner);
 }
 const homeView = el("div", { id: "view-home" });
+// 1. NEWS GANZ OBEN
+const newsSlot = el("div", { id: "news-slot" });
+homeView.appendChild(newsSlot);
+// 2. AUSWAHL MANNSCHAFT & ANSICHT DIREKT ÜBER DER KALENDERKACHEL
 const controlsBar = el("div", { className: "top-controls" });
 const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
 const filterLabel = el("span", { id: "filter-btn-label", textContent: getFilterButtonText() });
@@ -306,10 +310,10 @@ closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
 homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
-const newsSlot = el("div", { id: "news-slot" });
-homeView.appendChild(newsSlot);
+// 3. KALENDERKACHEL DIREKT UNTER DER MANNSCHAFTSAUSWAHL
 const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
+// 4. BANDENWERBUNG GANZ UNTEN
 const sponsorSlot = el("div", { id: "sponsor-slot" });
 homeView.appendChild(sponsorSlot);
 const platzwartView = el("div", { id: "platzwart-view-box", className: "box hidden" });
@@ -380,5 +384,4 @@ if (user) { renderDashboard(user); return; }
 }
 renderLogin();
 }
-starteApp();  
-
+starteApp();
