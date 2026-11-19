@@ -276,7 +276,7 @@ function zeigeSplitMonat(container, termine, user) {
 
 function zeigeWoche(container, termine, user) {
   const st = window.tsvCalState;
-const wBox = document.createElement("div");
+  const wBox = document.createElement("div");
 wBox.className = "box";
 wBox.style.padding = "14px";
 const ende = new Date(st.wochenStart);
@@ -339,7 +339,7 @@ ev.style.background = "#fef2f2";
 }
 const tDiv = document.createElement("div");
 tDiv.style.cssText = "font-weight:800;color:" + (sperre ? "var(--danger);" : "var(--navy);");
-tDiv.textContent = (sperre ? "⛔ " : "") + t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
+tDiv.textContent = t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
 const nDiv = document.createElement("div");
 nDiv.style.cssText = "font-weight:700;margin:2px 0;";
 nDiv.textContent = t.titel;
@@ -347,6 +347,12 @@ const mDiv = document.createElement("div");
 mDiv.style.cssText = "color:var(--muted);font-size:9px;";
 mDiv.textContent = t.mannschaft;
 ev.append(tDiv, nDiv, mDiv);
+if (sperre) {
+const spBadge = document.createElement("div");
+spBadge.style.cssText = "margin-top:4px;padding:2px 4px;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:9px;font-weight:800;line-height:1.15;";
+spBadge.textContent = "⛔ Platz gesperrt";
+ev.appendChild(spBadge);
+}
 ev.onclick = () => {
 if (kannTerminBearbeiten(user, t.mannschaft) && typeof oeffneTerminBearbeiten === "function") {
 oeffneTerminBearbeiten(t);
