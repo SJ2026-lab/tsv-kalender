@@ -3,7 +3,7 @@ const dbHost = "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatab
 const apiKey = "AIzaSyDATRJtGAkTVg-dB1AkI5jlEwNgBBIK-z8";
 
 const MANNSCHAFTEN = ["U7", "U9", "U11", "U13", "U15", "Altherren", "Damen", "Erste Mannschaft", "2. Mannschaft"];
-const ROLLEN = ["Eltern", "Trainer", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
+const ROLLEN = ["Eltern", "Trainer", "Platzwart", "Jugendleiter", "Vorstand", "Spartenleiter", "Fan"];
 
 let ausgewaehlteMannschaften = JSON.parse(localStorage.getItem("tsv_team_filter") || "[]");
 
@@ -28,8 +28,9 @@ function getPermissions(roleOrUser) {
   const role = typeof roleOrUser === "string" ? roleOrUser : (roleOrUser?.role || "Fan");
   const isVorstand = role === "Vorstand";
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
-  const canWrite = !["Eltern", "Fan"].includes(role);
-  return { canRead: true, canWrite, isAdmin, isVorstand, canApprove: canWrite, trainerTeams: [] };
+  const isPlatzwart = role === "Platzwart" || isAdmin;
+  const canWrite = !["Eltern", "Fan", "Platzwart"].includes(role);
+  return { canRead: true, canWrite, isAdmin, isVorstand, isPlatzwart, canApprove: canWrite, trainerTeams: [] };
 }
 
 function translateError(msg) {
@@ -168,7 +169,7 @@ function renderRegister() {
   MANNSCHAFTEN.forEach(m => teamSel.appendChild(el("option", { value: m, textContent: m })));
 
   roleSel.onchange = () => {
-    const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    const brauchtKeinTeam = ["Fan", "Platzwart", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
     teamSel.style.display = brauchtKeinTeam ? "none" : "block";
   };
 
@@ -181,7 +182,7 @@ function renderRegister() {
   regBtn.onclick = async () => {
     if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Vereinspasswort falsch!"; return; }
     if (!roleSel.value) { errP.textContent = "Bitte Funktion wählen!"; return; }
-    const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    const brauchtKeinTeam = ["Fan", "Platzwart", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
     if (!brauchtKeinTeam && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
 
     errP.textContent = "Konto wird erstellt...";
@@ -216,13 +217,13 @@ function renderDashboard(user) {
   app.innerHTML = "";
 
   if (!user.assignments) {
-    user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
-  }
-
-  const perms = getPermissions(user);
-  user.canWrite = perms.canWrite;
-  user.isAdmin = perms.isAdmin;
+  user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
+}
+const perms = getPermissions(user);
+user.canWrite = perms.canWrite;
+user.isAdmin = perms.isAdmin;
 user.isVorstand = perms.isVorstand;
+user.isPlatzwart = perms.isPlatzwart;
 const aktiveRollenText = user.assignments
 .filter(a => a.status === "approved")
 .map(a => a.role + (a.team ? " " + a.team : ""))
@@ -311,11 +312,7 @@ const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
 const sponsorSlot = el("div", { id: "sponsor-slot" });
 homeView.appendChild(sponsorSlot);
-const platzwartView = el("div", { className: "box hidden" });
-platzwartView.append(
-el("h2", { textContent: "🛠️ Platzwart & Kabinen", style: "margin:0 0 8px;color:var(--navy);" }),
-el("p", { textContent: "Hier richten wir als Nächstes die Platzfreigabe (Rasen / Kunstrasen gesperrt oder frei) sowie die Kabinenbelegung ein.", style: "font-size:14px;color:var(--muted);margin:0;" })
-);
+const platzwartView = el("div", { id: "platzwart-view-box", className: "box hidden" });
 const chatView = el("div", { className: "box hidden" });
 chatView.append(
 el("h2", { textContent: "💬 Mannschafts-Chat", style: "margin:0 0 8px;color:var(--navy);" }),
@@ -345,7 +342,10 @@ aktivBtn.classList.add("active");
 zielView.classList.remove("hidden");
 }
 tabLigen.onclick = () => zeigeTab(tabLigen, homeView);
-tabPlatz.onclick = () => zeigeTab(tabPlatz, platzwartView);
+tabPlatz.onclick = () => {
+zeigeTab(tabPlatz, platzwartView);
+if (typeof ladePlatzsperren === "function") ladePlatzsperren();
+};
 tabChat.onclick = () => zeigeTab(tabChat, chatView);
 tabProfil.onclick = () => {
 zeigeTab(tabProfil, profilView);
@@ -365,6 +365,7 @@ if (typeof wechseleAnsicht === "function") wechseleAnsicht("WOCHE");
 nav.append(tabLigen, tabPlatz, tabChat, tabProfil);
 app.appendChild(nav);
 if (typeof ladeVereinsInfos === "function") ladeVereinsInfos();
+if (typeof ladePlatzsperren === "function") ladePlatzsperren();
 if (typeof ladeTermine === "function") ladeTermine();
 if (typeof ladeUndZeichneProfil === "function") ladeUndZeichneProfil(user, profilView);
 }
@@ -379,4 +380,5 @@ if (user) { renderDashboard(user); return; }
 }
 renderLogin();
 }
-starteApp();
+starteApp();  
+
