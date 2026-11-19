@@ -1,4 +1,3 @@
-```javascript
 window.tsvCalState = {
   dbHost: "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app",
   monateLang: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
@@ -277,9 +276,9 @@ function zeigeWoche(container, termine, user) {
   prev.textContent = "‹";
   const next = document.createElement("button");
   next.type = "button";
-next.className = "cal-nav-btn";
-next.textContent = "›";
-const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
+  next.className = "cal-nav-btn";
+  next.textContent = "›";
+  const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
 String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
 const title = document.createElement("h3");
 title.textContent = titelText;
