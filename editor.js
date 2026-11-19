@@ -1,8 +1,6 @@
-// editor.js – Slide-Up-Formular für neue, wiederkehrende & zu bearbeitende Termine
-
 let bearbeitungsTermin = null;
 
-function baueTerminEditor(appContainer, mannschaftenListe) {
+function baueTerminEditor(appContainer, mannschaftenListe, darfGesamtverein = true) {
   const backdrop = document.createElement("div");
   backdrop.id = "termin-modal";
   backdrop.className = "modal-backdrop hidden";
@@ -31,28 +29,41 @@ function baueTerminEditor(appContainer, mannschaftenListe) {
   const lblTeam = erstelleLabel("Mannschaft");
   const teamSel = document.createElement("select");
   teamSel.id = "termin-team";
-  let teamOptions = '<option value="Alle Mannschaften">Alle Mannschaften (Gesamtverein)</option>';
-  mannschaftenListe.forEach(m => {
-    teamOptions += '<option value="' + m + '">' + m + '</option>';
+
+  if (darfGesamtverein) {
+    const optAlle = document.createElement("option");
+    optAlle.value = "Alle Mannschaften";
+    optAlle.textContent = "Alle Mannschaften (Gesamtverein)";
+    teamSel.appendChild(optAlle);
+  }
+
+  (mannschaftenListe || []).forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    teamSel.appendChild(opt);
   });
-  teamSel.innerHTML = teamOptions;
 
   const lblDatum = erstelleLabel("Datum");
   const datumIn = erstelleFeld("date", "termin-datum", "");
 
-  // Wiederholung (wird beim Bearbeiten ausgeblendet)
   const wdhWrapper = document.createElement("div");
   wdhWrapper.id = "termin-wdh-wrapper";
   const lblWdh = erstelleLabel("Häufigkeit");
   const wdhSel = document.createElement("select");
   wdhSel.id = "termin-wdh";
-  wdhSel.innerHTML = `
-    <option value="1">Einmaliger Termin</option>
-    <option value="4">Wöchentlich (4 Wochen)</option>
-    <option value="8">Wöchentlich (8 Wochen)</option>
-    <option value="12">Wöchentlich (12 Wochen)</option>
-    <option value="20">Wöchentlich (20 Wochen)</option>
-  `;
+  [
+    { val: "1", text: "Einmaliger Termin" },
+    { val: "4", text: "Wöchentlich (4 Wochen)" },
+    { val: "8", text: "Wöchentlich (8 Wochen)" },
+    { val: "12", text: "Wöchentlich (12 Wochen)" },
+    { val: "20", text: "Wöchentlich (20 Wochen)" }
+  ].forEach(item => {
+    const o = document.createElement("option");
+    o.value = item.val;
+    o.textContent = item.text;
+    wdhSel.appendChild(o);
+  });
   wdhWrapper.append(lblWdh, wdhSel);
 
   const zeitRow = document.createElement("div");
@@ -86,7 +97,6 @@ function baueTerminEditor(appContainer, mannschaftenListe) {
     if (typeof speichereTermin === "function") speichereTermin();
   };
 
-  // Löschen-Button (nur im Bearbeitungsmodus sichtbar)
   const delBtn = document.createElement("button");
   delBtn.id = "editor-del-btn";
   delBtn.type = "button";
@@ -123,7 +133,6 @@ function baueTerminEditor(appContainer, mannschaftenListe) {
   appContainer.appendChild(backdrop);
 }
 
-// Editor im Modus "Bearbeiten" öffnen & alle Werte eintragen
 function oeffneTerminBearbeiten(termin) {
   const modal = document.getElementById("termin-modal");
   if (!modal || !termin) return;
@@ -147,7 +156,6 @@ function oeffneTerminBearbeiten(termin) {
   modal.classList.remove("hidden");
 }
 
-// Detail-Ansicht für Eltern/Fans (nur Lesen)
 function zeigeTerminDetailsPopup(t) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -155,24 +163,43 @@ function zeigeTerminDetailsPopup(t) {
   const sheet = document.createElement("div");
   sheet.className = "bottom-sheet";
 
+  const head = document.createElement("div");
+  head.className = "sheet-header";
+  const h3 = document.createElement("h3");
+  h3.style.cssText = "margin:0;font-size:18px;color:var(--navy);";
+  h3.textContent = t.titel;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "sheet-close";
+  closeBtn.textContent = "×";
+  closeBtn.onclick = () => backdrop.remove();
+  head.append(h3, closeBtn);
+  sheet.appendChild(head);
+
   const dLesbar = t.datum ? t.datum.slice(8, 10) + "." + t.datum.slice(5, 7) + "." + t.datum.slice(0, 4) : "";
   const zText = t.endzeit ? t.uhrzeit + " – " + t.endzeit + " Uhr" : t.uhrzeit + " Uhr";
 
-  sheet.innerHTML = `
-    <div class="sheet-header">
-      <h3 style="margin:0;font-size:18px;color:var(--navy);">${t.titel}</h3>
-      <button type="button" class="sheet-close" id="detail-close">×</button>
-    </div>
-    <p style="margin:0 0 8px;font-size:14px;"><strong>Mannschaft:</strong> ${t.mannschaft}</p>
-    <p style="margin:0 0 8px;font-size:14px;"><strong>Datum:</strong> ${dLesbar}</p>
-    <p style="margin:0 0 8px;font-size:14px;"><strong>Uhrzeit:</strong> ${zText}</p>
-    ${t.ort ? `<p style="margin:0 0 8px;font-size:14px;"><strong>Ort:</strong> ${t.ort}</p>` : ""}
-    ${t.info ? `<div style="background:#f8fafc;padding:12px;border-radius:12px;font-size:13px;margin-top:10px;border:1px solid var(--border);">${t.info}</div>` : ""}
-  `;
+  [
+    "Mannschaft: " + t.mannschaft,
+    "Datum: " + dLesbar,
+    "Uhrzeit: " + zText,
+    t.ort ? "Ort: " + t.ort : ""
+  ].filter(Boolean).forEach(line => {
+    const p = document.createElement("p");
+    p.style.cssText = "margin:0 0 8px;font-size:14px;font-weight:600;";
+    p.textContent = line;
+    sheet.appendChild(p);
+  });
+
+  if (t.info) {
+    const note = document.createElement("div");
+    note.style.cssText = "background:#f8fafc;padding:12px;border-radius:12px;font-size:13px;margin-top:10px;border:1px solid var(--border);";
+    note.textContent = t.info;
+    sheet.appendChild(note);
+  }
 
   backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
-  sheet.querySelector("#detail-close").onclick = () => backdrop.remove();
-
   backdrop.appendChild(sheet);
   document.body.appendChild(backdrop);
 }
