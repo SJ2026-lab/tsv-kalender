@@ -200,7 +200,12 @@ function zeigeSplitMonat(container, termine, user) {
   }
 
   const evHead = document.createElement("div");
-  evHead.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-shrink:0;";
+  evHead.style.display = "flex";
+  evHead.style.justifyContent = "space-between";
+  evHead.style.alignItems = "center";
+  evHead.style.marginBottom = "10px";
+  evHead.style.flexShrink = "0";
+
   const h3El = document.createElement("h3");
   h3El.style.margin = "0";
   h3El.textContent = boxTitel;
@@ -209,7 +214,11 @@ function zeigeSplitMonat(container, termine, user) {
   if (st.tagAngeklickt) {
     const resetLink = document.createElement("span");
     resetLink.textContent = "Alle";
-    resetLink.style.cssText = "font-size:11px;color:var(--navy);font-weight:700;cursor:pointer;text-decoration:underline;";
+    resetLink.style.fontSize = "11px";
+    resetLink.style.color = "var(--navy)";
+    resetLink.style.fontWeight = "700";
+    resetLink.style.cursor = "pointer";
+    resetLink.style.textDecoration = "underline";
     resetLink.onclick = () => { st.tagAngeklickt = false; renderKalenderAnsicht(); };
     evHead.appendChild(resetLink);
   }
@@ -220,7 +229,9 @@ function zeigeSplitMonat(container, termine, user) {
 
   if (anzeigeTermine.length === 0) {
     const leer = document.createElement("p");
-    leer.style.cssText = "font-size:12px;color:var(--muted);margin:0;";
+    leer.style.fontSize = "12px";
+    leer.style.color = "var(--muted)";
+    leer.style.margin = "0";
     leer.textContent = "Keine Termine eingetragen.";
     scrollArea.appendChild(leer);
   } else {
@@ -250,7 +261,14 @@ function zeigeSplitMonat(container, termine, user) {
 
       if (sperre) {
         const warnBadge = document.createElement("div");
-        warnBadge.style.cssText = "display:inline-block;margin-top:3px;padding:2px 6px;border-radius:6px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;";
+        warnBadge.style.display = "inline-block";
+        warnBadge.style.marginTop = "3px";
+        warnBadge.style.padding = "2px 6px";
+        warnBadge.style.borderRadius = "6px";
+        warnBadge.style.background = "#fee2e2";
+        warnBadge.style.color = "#b91c1c";
+        warnBadge.style.fontSize = "10px";
+        warnBadge.style.fontWeight = "800";
         warnBadge.textContent = "⛔ " + sperre.platz + " gesperrt";
         detDiv.appendChild(warnBadge);
       }
@@ -261,22 +279,19 @@ function zeigeSplitMonat(container, termine, user) {
         delSpan.style.marginLeft = sperre ? "8px" : "0";
         delSpan.textContent = "Löschen";
         delSpan.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
-        detDiv.appendChild(delSpan);
-      }
-
-      row.append(iconDiv, detDiv);
-      scrollArea.appendChild(row);
-    });
-  }
-
-  evCard.appendChild(scrollArea);
-  split.append(calCard, evCard);
-  container.appendChild(split);
+detDiv.appendChild(delSpan);
 }
-
+row.append(iconDiv, detDiv);
+scrollArea.appendChild(row);
+});
+}
+evCard.appendChild(scrollArea);
+split.append(calCard, evCard);
+container.appendChild(split);
+}
 function zeigeWoche(container, termine, user) {
-  const st = window.tsvCalState;
-  const wBox = document.createElement("div");
+const st = window.tsvCalState;
+const wBox = document.createElement("div");
 wBox.className = "box";
 wBox.style.padding = "14px";
 const ende = new Date(st.wochenStart);
@@ -316,7 +331,10 @@ headRow.appendChild(daySpan);
 if (user.canWrite) {
 const plus = document.createElement("span");
 plus.textContent = "+";
-plus.style.cssText = "color:var(--navy);font-size:15px;cursor:pointer;padding:0 3px;";
+plus.style.color = "var(--navy)";
+plus.style.fontSize = "15px";
+plus.style.cursor = "pointer";
+plus.style.padding = "0 3px";
 plus.onclick = () => oeffneTerminFormular(iso);
 headRow.appendChild(plus);
 }
@@ -324,7 +342,10 @@ miniCard.appendChild(headRow);
 const tagesTermine = termine.filter(x => x.datum === iso);
 if (tagesTermine.length === 0) {
 const leer = document.createElement("div");
-leer.style.cssText = "font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;";
+leer.style.fontSize = "11px";
+leer.style.color = "#94a3b8";
+leer.style.textAlign = "center";
+leer.style.marginTop = "16px";
 leer.textContent = "Frei";
 miniCard.appendChild(leer);
 } else {
@@ -338,18 +359,28 @@ ev.style.borderLeftColor = "var(--danger)";
 ev.style.background = "#fef2f2";
 }
 const tDiv = document.createElement("div");
-tDiv.style.cssText = "font-weight:800;color:" + (sperre ? "var(--danger);" : "var(--navy);");
-tDiv.textContent = t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
+tDiv.style.fontWeight = "800";
+tDiv.style.color = sperre ? "var(--danger)" : "var(--navy)";
+tDiv.textContent = (sperre ? "⛔ " : "") + t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
 const nDiv = document.createElement("div");
-nDiv.style.cssText = "font-weight:700;margin:2px 0;";
+nDiv.style.fontWeight = "700";
+nDiv.style.margin = "2px 0";
 nDiv.textContent = t.titel;
 const mDiv = document.createElement("div");
-mDiv.style.cssText = "color:var(--muted);font-size:9px;";
+mDiv.style.color = "var(--muted)";
+mDiv.style.fontSize = "9px";
 mDiv.textContent = t.mannschaft;
 ev.append(tDiv, nDiv, mDiv);
 if (sperre) {
 const spBadge = document.createElement("div");
-spBadge.style.cssText = "margin-top:4px;padding:2px 4px;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:9px;font-weight:800;line-height:1.15;";
+spBadge.style.marginTop = "4px";
+spBadge.style.padding = "2px 4px";
+spBadge.style.borderRadius = "4px";
+spBadge.style.background = "#fee2e2";
+spBadge.style.color = "#b91c1c";
+spBadge.style.fontSize = "9px";
+spBadge.style.fontWeight = "800";
+spBadge.style.lineHeight = "1.15";
 spBadge.textContent = "⛔ Platz gesperrt";
 ev.appendChild(spBadge);
 }
