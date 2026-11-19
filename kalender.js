@@ -1,3 +1,4 @@
+```javascript
 window.tsvCalState = {
   dbHost: "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app",
   monateLang: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
@@ -69,6 +70,13 @@ function getEventIcon(titel) {
   if (t.includes("spiel") || t.includes("vs") || t.includes("turnier")) return "👟";
   if (t.includes("sitzung") || t.includes("besprechung") || t.includes("versammlung")) return "👤";
   return "⚽";
+}
+
+function kannTerminBearbeiten(user, mannschaft) {
+  if (typeof darfTeamBearbeiten === "function") {
+    return darfTeamBearbeiten(user, mannschaft);
+  }
+  return Boolean(user && user.canWrite);
 }
 
 function renderKalenderAnsicht() {
@@ -235,7 +243,7 @@ function zeigeSplitMonat(container, termine, user) {
 
       detDiv.append(titleDiv, subDiv);
 
-      if (user.canWrite) {
+      if (kannTerminBearbeiten(user, t.mannschaft)) {
         const delSpan = document.createElement("span");
         delSpan.className = "ev-del-link";
         delSpan.textContent = "Löschen";
@@ -269,12 +277,12 @@ function zeigeWoche(container, termine, user) {
   prev.textContent = "‹";
   const next = document.createElement("button");
   next.type = "button";
-  next.className = "cal-nav-btn";
-  next.textContent = "›";
-  const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
-                    String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
-  const title = document.createElement("h3");
-  title.textContent = titelText;
+next.className = "cal-nav-btn";
+next.textContent = "›";
+const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
+String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
+const title = document.createElement("h3");
+title.textContent = titelText;
 prev.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() - 7); renderKalenderAnsicht(); };
 next.onclick = () => { st.wochenStart.setDate(st.wochenStart.getDate() + 7); renderKalenderAnsicht(); };
 header.append(prev, title, next);
@@ -323,7 +331,7 @@ mDiv.style.cssText = "color:var(--muted);font-size:9px;";
 mDiv.textContent = t.mannschaft;
 ev.append(tDiv, nDiv, mDiv);
 ev.onclick = () => {
-if (user.canWrite && typeof oeffneTerminBearbeiten === "function") {
+if (kannTerminBearbeiten(user, t.mannschaft) && typeof oeffneTerminBearbeiten === "function") {
 oeffneTerminBearbeiten(t);
 } else if (typeof zeigeTerminDetailsPopup === "function") {
 zeigeTerminDetailsPopup(t);
