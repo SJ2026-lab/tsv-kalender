@@ -74,13 +74,12 @@ async function ladeVereinsInfos() {
   zeichneSponsorenBanner();
 }
 
-// 1. News-Banner (2 Spalten: Links Bild, Rechts Text)
 function zeichneNewsBanner() {
   const container = document.getElementById("news-slot");
   const user = getAktuellerUser();
   if (!container || !user) return;
 
-  const perms = getPermissions(user.role);
+  const perms = getPermissions(user);
   container.innerHTML = "";
 
   const card = document.createElement("div");
@@ -303,10 +302,12 @@ function oeffneNewsEditor() {
   backdrop.appendChild(sheet);
   document.body.appendChild(backdrop);
 }
+
 function zeichneSponsorenBanner() {
 const container = document.getElementById("sponsor-slot");
 const user = getAktuellerUser();
 if (!container || !user) return;
+const perms = getPermissions(user);
 if (sponsorLoopTimer) {
 clearTimeout(sponsorLoopTimer);
 sponsorLoopTimer = null;
@@ -315,7 +316,6 @@ container.innerHTML = "";
 const basisListe = sponsorenListe.length > 0 ? sponsorenListe : [
 { firma: "TSV Partner", slogan: "Hier kann Ihre Bandenwerbung stehen!", bild: "" }
 ];
-// Für nahtlosen Loop: Erstes Element am Ende noch einmal anhängen, falls > 1 Sponsor
 const loopListe = basisListe.length > 1 ? [...basisListe, basisListe.slice(0, 1).pop()] : basisListe;
 const banner = document.createElement("div");
 banner.className = "sponsor-banner";
@@ -344,7 +344,6 @@ slide.append(logoDiv, sloganDiv);
 track.appendChild(slide);
 });
 banner.appendChild(track);
-// Indikator-Punkte unten
 const dotsWrap = document.createElement("div");
 dotsWrap.className = "sponsor-dots";
 const dotEls = [];
@@ -357,7 +356,7 @@ dotEls.push(dot);
 });
 banner.appendChild(dotsWrap);
 }
-if (user.role === "Vorstand") {
+if (perms.isVorstand) {
 const manageBtn = document.createElement("button");
 manageBtn.type = "button";
 manageBtn.className = "sponsor-gear-btn";
@@ -369,11 +368,10 @@ oeffneSponsorenManager();
 banner.appendChild(manageBtn);
 }
 container.appendChild(banner);
-// Nahtlose Endlosschleife starten, sobald mindestens 2 Werbepartner vorhanden sind
 if (basisListe.length > 1) {
 let pos = 0;
-const slideDauerMs = 5000; // 0,8 Sekunden sanftes Gleiten
-const pauseDauerMs = 1000; // Exakt 1 Sekunde Pause voll im Bild
+const slideDauerMs = 800;
+const pauseDauerMs = 1000;
 function aktualisierePunkte(index) {
 const echterIndex = index % basisListe.length;
 dotEls.forEach((d, i) => {
@@ -387,7 +385,6 @@ pos++;
 track.style.transition = "transform " + slideDauerMs + "ms cubic-bezier(0.25, 0.8, 0.25, 1)";
 track.style.transform = "translateX(-" + (pos * 100) + "%)";
 aktualisierePunkte(pos);
-// Wenn wir auf der Kopie des ersten Banners angekommen sind: Nach dem Gleiten unsichtbar auf 0 zurücksetzen
 if (pos === basisListe.length) {
 setTimeout(() => {
 track.style.transition = "none";
@@ -395,16 +392,15 @@ pos = 0;
 track.style.transform = "translateX(0%)";
 }, slideDauerMs);
 }
-// Nach Gleitzeit + exakt 1 Sekunde Pause voll im Bild den nächsten Slide starten
 sponsorLoopTimer = setTimeout(naechsterSchritt, slideDauerMs + pauseDauerMs);
 }
-// Erste Pause von 1 Sekunde voll im Bild, dann startet die Endlosschleife
 sponsorLoopTimer = setTimeout(naechsterSchritt, pauseDauerMs);
 }
 }
 function oeffneSponsorenManager() {
 const user = getAktuellerUser();
-if (!user || user.role !== "Vorstand") return;
+const perms = getPermissions(user);
+if (!user || !perms.isVorstand) return;
 let neuesBannerBase64 = "";
 const backdrop = document.createElement("div");
 backdrop.className = "modal-backdrop";
