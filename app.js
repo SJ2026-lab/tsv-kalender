@@ -21,10 +21,16 @@ function feld(art, idName, hinweis) {
   return f;
 }
 
-function getPermissions(role) {
+// Abwärtskompatibel für bestehende Profile + neue Mehrfachrollen
+function getPermissions(roleOrUser) {
+  if (roleOrUser && typeof roleOrUser === "object" && roleOrUser.assignments) {
+    return berechneGesamtRechte(roleOrUser.assignments);
+  }
+  const role = typeof roleOrUser === "string" ? roleOrUser : (roleOrUser?.role || "Fan");
+  const isVorstand = role === "Vorstand";
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
   const canWrite = !["Eltern", "Fan"].includes(role);
-  return { canRead: true, canWrite, isAdmin };
+  return { canRead: true, canWrite, isAdmin, isVorstand, canApprove: canWrite };
 }
 
 function translateError(msg) {
@@ -64,6 +70,12 @@ async function refreshSessionToken(user) {
     const data = await res.json();
     user.idToken = data.id_token;
     user.refreshToken = data.refresh_token;
+
+    // Frisches Profil aus Firebase nachladen (falls inzwischen eine Freigabe erfolgt ist!)
+    const freshProf = await loadUserProfile(user.uid, user.idToken);
+    if (freshProf) {
+      user = { ...freshProf, uid: user.uid, idToken: user.idToken, refreshToken: user.refreshToken };
+    }
     localStorage.setItem("tsv_user_data", JSON.stringify(user));
     return user;
   } catch (e) { return user; }
@@ -112,8 +124,11 @@ function renderLogin() {
       const auth = await firebaseAuthRequest("signInWithPassword", emailIn.value.trim(), passIn.value);
       let prof = await loadUserProfile(auth.localId, auth.idToken);
       if (!prof) {
-        prof = { email: auth.email, role: "Vorstand", team: "Erste Mannschaft", ...getPermissions("Vorstand") };
+        const initAssign = [{ role: "Vorstand", team: "", status: "approved" }];
+        prof = { email: auth.email, role: "Vorstand", team: "", assignments: initAssign, ...berechneGesamtRechte(initAssign) };
         await saveUserProfile(auth.localId, auth.idToken, prof);
+      } else if (!prof.assignments) {
+        prof.assignments = [{ role: prof.role || "Vorstand", team: prof.team || "", status: "approved" }];
       }
       prof.idToken = auth.idToken;
       prof.refreshToken = auth.refreshToken;
@@ -141,21 +156,18 @@ function renderRegister() {
   head.appendChild(brand);
 
   const box = el("div", { className: "box" });
-  box.append(
-    el("h2", { textContent: "Konto erstellen", style: "margin:0 0 10px;color:var(--navy);" }),
-    el("p", { textContent: "Gib das Vereinspasswort ein und wähle deine Funktion.", style: "font-size:13px;color:var(--muted);margin:0 0 14px;" })
-  );
+  box.innerHTML = '<h2 style="margin:0 0 10px;color:var(--navy);">Konto erstellen</h2><p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Wähle deine Hauptfunktion. Weitere Teams kannst du danach jederzeit im Profil hinzufügen.</p>';
 
   const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
-  roleSel.appendChild(el("option", { value: "", textContent: "-- Funktion wählen --" }));
-  ROLLEN.forEach(r => roleSel.appendChild(el("option", { value: r, textContent: r })));
-
+  roleSel.innerHTML = '<option value="">-- Hauptfunktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
   const teamSel = el("select");
-  teamSel.appendChild(el("option", { value: "", textContent: "-- Mannschaft wählen --" }));
-  MANNSCHAFTEN.forEach(m => teamSel.appendChild(el("option", { value: m, textContent: m })));
+  teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
 
-  roleSel.onchange = () => { teamSel.style.display = roleSel.value === "Fan" ? "none" : "block"; };
+  roleSel.onchange = () => {
+    const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    teamSel.style.display = brauchtKeinTeam ? "none" : "block";
+  };
 
   const emailIn = feld("email", "", "Deine E-Mail-Adresse");
   const passIn = feld("password", "", "Eigenes Passwort (min. 6 Zeichen)");
@@ -166,12 +178,28 @@ function renderRegister() {
   regBtn.onclick = async () => {
     if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Vereinspasswort falsch!"; return; }
     if (!roleSel.value) { errP.textContent = "Bitte Funktion wählen!"; return; }
-    if (roleSel.value !== "Fan" && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
+
+    const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    if (!brauchtKeinTeam && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
+
     errP.textContent = "Konto wird erstellt...";
     try {
       const auth = await firebaseAuthRequest("signUp", emailIn.value.trim(), passIn.value);
-      const perms = getPermissions(roleSel.value);
-      const profile = { email: auth.email, role: roleSel.value, team: roleSel.value === "Fan" ? "" : teamSel.value, ...perms };
+
+      // Fan ist sofort aktiv, alle Vereinsfunktionen warten auf Freigabe ("pending")
+      const status = roleSel.value === "Fan" ? "approved" : "pending";
+      const gewaehltesTeam = brauchtKeinTeam ? "" : teamSel.value;
+      const assignments = [{ role: roleSel.value, team: gewaehltesTeam, status }];
+      const rechte = berechneGesamtRechte(assignments);
+
+      const profile = {
+        email: auth.email,
+        role: roleSel.value,
+        team: gewaehltesTeam,
+        assignments,
+        ...rechte
+      };
+
       await saveUserProfile(auth.localId, auth.idToken, profile);
       const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken, refreshToken: auth.refreshToken };
       localStorage.setItem("tsv_user_data", JSON.stringify(fullUser));
@@ -189,38 +217,55 @@ function getFilterButtonText() {
   if (ausgewaehlteMannschaften.length <= 2) return ausgewaehlteMannschaften.join(", ");
   return ausgewaehlteMannschaften.length + " Mannschaften";
 }
-
 function renderDashboard(user) {
-  const app = document.getElementById("app");
-  app.innerHTML = "";
-  const perms = getPermissions(user.role);
-
-  const head = el("div", { className: "app-header" });
-  const brand = el("div", { className: "brand" });
-  const crest = el("div", { className: "club-crest", textContent: "TSV" });
-  const titles = el("div");
-  titles.append(
-    el("h1", { textContent: "TSV Termine" }),
-    el("p", { textContent: user.team ? user.team : "Gesamtverein" })
-  );
-  brand.append(crest, titles);
-  const roleBadge = el("span", { className: "role-pill-mini", textContent: user.role });
-  head.append(brand, roleBadge);
-  app.appendChild(head);
-
-  const homeView = el("div", { id: "view-home" });
-
-  const controlsBar = el("div", { className: "top-controls" });
-  const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
-  const filterLabel = el("span", { id: "filter-btn-label", textContent: getFilterButtonText() });
-  const filterArrow = el("span", { textContent: "▾" });
-  filterBtn.append(filterLabel, filterArrow);
-
-  const viewGroup = el("div", { className: "view-toggle-group" });
-  const topBtnMonat = el("button", { type: "button", className: "view-toggle-btn active", textContent: "Monat" });
-  const topBtnWoche = el("button", { type: "button", className: "view-toggle-btn", textContent: "Woche" });
-  viewGroup.append(topBtnMonat, topBtnWoche);
-  controlsBar.append(filterBtn, viewGroup);
+const app = document.getElementById("app");
+app.innerHTML = "";
+// Abwärtskompatibilität sicherstellen, falls altes Profil noch kein assignments-Array hat
+if (!user.assignments) {
+user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
+}
+const perms = berechneGesamtRechte(user.assignments);
+user.canWrite = perms.canWrite;
+user.isAdmin = perms.isAdmin;
+user.isVorstand = perms.isVorstand;
+// Freigegebene Rollen für die Anzeige oben im Header zusammenfassen
+const aktiveRollenText = user.assignments
+.filter(a => a.status === "approved")
+.map(a => a.role + (a.team ? " " + a.team : ""))
+.join(" • ") || "Wartet auf Freigabe";
+const head = el("div", { className: "app-header" });
+const brand = el("div", { className: "brand" });
+const crest = el("div", { className: "club-crest", textContent: "TSV" });
+const titles = el("div");
+titles.append(
+el("h1", { textContent: "TSV Termine" }),
+el("p", { textContent: aktiveRollenText })
+);
+brand.append(crest, titles);
+const hauptRolle = (user.assignments.find(a => a.status === "approved") || user.assignments.slice(0, 1).pop())?.role || "Mitglied";
+const roleBadge = el("span", { className: "role-pill-mini", textContent: hauptRolle });
+head.append(brand, roleBadge);
+app.appendChild(head);
+// Hinweis-Banner anzeigen, falls mindestens eine Anfrage noch auf Freigabe wartet
+const offeneEigene = user.assignments.filter(a => a.status === "pending");
+if (offeneEigene.length > 0) {
+const infoBanner = el("div", {
+style: "background:#fef3c7;color:#92400e;padding:10px 14px;border-radius:14px;font-size:12px;font-weight:700;margin-bottom:12px;border:1px solid #fde68a;"
+});
+infoBanner.textContent = "⏳ Offene Freigabe für: " + offeneEigene.map(a => a.role + (a.team ? " (" + a.team + ")" : "")).join(", ");
+app.appendChild(infoBanner);
+}
+const homeView = el("div", { id: "view-home" });
+const controlsBar = el("div", { className: "top-controls" });
+const filterBtn = el("button", { type: "button", className: "filter-dropdown-btn" });
+const filterLabel = el("span", { id: "filter-btn-label", textContent: getFilterButtonText() });
+const filterArrow = el("span", { textContent: "▾" });
+filterBtn.append(filterLabel, filterArrow);
+const viewGroup = el("div", { className: "view-toggle-group" });
+const topBtnMonat = el("button", { type: "button", className: "view-toggle-btn active", textContent: "Monat" });
+const topBtnWoche = el("button", { type: "button", className: "view-toggle-btn", textContent: "Woche" });
+viewGroup.append(topBtnMonat, topBtnWoche);
+controlsBar.append(filterBtn, viewGroup);
 homeView.appendChild(controlsBar);
 const filterPopover = el("div", { className: "filter-popover hidden" });
 filterPopover.appendChild(el("div", {
@@ -270,13 +315,10 @@ closeFilterBtn.onclick = () => filterPopover.classList.add("hidden");
 filterPopover.append(chipGrid, closeFilterBtn);
 homeView.appendChild(filterPopover);
 filterBtn.onclick = () => filterPopover.classList.toggle("hidden");
-// Dynamischer News-Slot (aus vereinsinfos.js)
 const newsSlot = el("div", { id: "news-slot" });
 homeView.appendChild(newsSlot);
-// 2-Spalten Kalender + Kommende Events Bereich
 const kalenderBereich = el("div", { id: "termine-liste" });
 homeView.appendChild(kalenderBereich);
-// Dynamischer Sponsoren-Slot (aus vereinsinfos.js)
 const sponsorSlot = el("div", { id: "sponsor-slot" });
 homeView.appendChild(sponsorSlot);
 const platzwartView = el("div", { className: "box hidden" });
@@ -289,39 +331,24 @@ chatView.append(
 el("h2", { textContent: "💬 Mannschafts-Chat", style: "margin:0 0 8px;color:var(--navy);" }),
 el("p", { textContent: "Hier entsteht euer direkter Vereins- & Trainer-Chat für schnelle Absprachen.", style: "font-size:14px;color:var(--muted);margin:0;" })
 );
-const profilView = el("div", { className: "box hidden" });
-profilView.append(
-el("h2", { textContent: "Mein Vereinsprofil", style: "margin:0 0 12px;color:var(--navy);" }),
-el("p", { textContent: "E-Mail: " + user.email, style: "font-size:14px;margin:0 0 8px;font-weight:600;" }),
-el("p", { textContent: "Funktion: " + user.role, style: "font-size:14px;margin:0 0 8px;font-weight:600;" })
-);
-if (user.team) {
-profilView.appendChild(el("p", { textContent: "Mannschaft: " + user.team, style: "font-size:14px;margin:0 0 12px;font-weight:600;" }));
-}
-const badgeRow = el("div", { style: "margin-bottom:20px;" });
-if (perms.isAdmin) badgeRow.appendChild(el("span", { className: "badge badge-admin", textContent: "Admin" }));
-badgeRow.appendChild(el("span", {
-className: perms.canWrite ? "badge badge-write" : "badge badge-read",
-textContent: perms.canWrite ? "Lesen & Schreiben" : "Nur Lesen"
-}));
-profilView.appendChild(badgeRow);
-const logoutBtn = el("button", { type: "button", className: "btn-danger", textContent: "Ausloggen" });
-logoutBtn.onclick = () => { localStorage.removeItem("tsv_user_data"); renderLogin(); };
-profilView.appendChild(logoutBtn);
+const profilView = el("div", { id: "profil-view-box", className: "box hidden" });
 app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
-baueTerminEditor(app, MANNSCHAFTEN);
+// Trainer bekommen im Editor nur ihre eigenen freigegebenen Mannschaften zur Auswahl, Admins alle
+const erlaubteTeams = perms.isAdmin ? MANNSCHAFTEN : perms.trainerTeams;
+baueTerminEditor(app, erlaubteTeams, perms.isAdmin);
 }
 const nav = el("div", { className: "bottom-nav" });
-function baueNavTab(icon, label, aktiv) {
+function baueNavTab(icon, label, aktiv, idName) {
 const b = el("button", { type: "button", className: "nav-item" + (aktiv ? " active" : "") });
+if (idName) b.id = idName;
 b.append(el("span", { className: "nav-icon", textContent: icon }), el("span", { textContent: label }));
 return b;
 }
-const tabLigen = baueNavTab("📅", "Ligen", true);
-const tabPlatz = baueNavTab("🛠️", "Platzwart", false);
-const tabChat = baueNavTab("💬", "Chat", false);
-const tabProfil = baueNavTab("👤", "Profil", false);
+const tabLigen = baueNavTab("📅", "Ligen", true, "nav-tab-ligen");
+const tabPlatz = baueNavTab("🛠️", "Platzwart", false, "nav-tab-platz");
+const tabChat = baueNavTab("💬", "Chat", false, "nav-tab-chat");
+const tabProfil = baueNavTab("👤", "Profil", false, "nav-tab-profil");
 function zeigeTab(aktivBtn, zielView) {
 nav.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
 aktivBtn.classList.add("active");
@@ -331,7 +358,10 @@ zielView.classList.remove("hidden");
 tabLigen.onclick = () => zeigeTab(tabLigen, homeView);
 tabPlatz.onclick = () => zeigeTab(tabPlatz, platzwartView);
 tabChat.onclick = () => zeigeTab(tabChat, chatView);
-tabProfil.onclick = () => zeigeTab(tabProfil, profilView);
+tabProfil.onclick = () => {
+zeigeTab(tabProfil, profilView);
+if (typeof ladeUndZeichneProfil === "function") ladeUndZeichneProfil(user, profilView);
+};
 topBtnMonat.onclick = () => {
 topBtnMonat.classList.add("active");
 topBtnWoche.classList.remove("active");
@@ -347,6 +377,7 @@ nav.append(tabLigen, tabPlatz, tabChat, tabProfil);
 app.appendChild(nav);
 if (typeof ladeVereinsInfos === "function") ladeVereinsInfos();
 if (typeof ladeTermine === "function") ladeTermine();
+if (typeof ladeUndZeichneProfil === "function") ladeUndZeichneProfil(user, profilView);
 }
 async function starteApp() {
 const saved = localStorage.getItem("tsv_user_data");
