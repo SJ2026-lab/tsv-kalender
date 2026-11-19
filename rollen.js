@@ -6,11 +6,12 @@ function berechneGesamtRechte(assignments) {
   const isJugendleiter = aktiv.some(a => a.role === "Jugendleiter");
   const isSpartenleiter = aktiv.some(a => a.role === "Spartenleiter");
   const isAdmin = isVorstand || isJugendleiter || isSpartenleiter;
+  const isPlatzwart = aktiv.some(a => a.role === "Platzwart") || isAdmin;
   const trainerTeams = aktiv.filter(a => a.role === "Trainer").map(a => a.team);
   const elternTeams = aktiv.filter(a => a.role === "Eltern").map(a => a.team);
   const canWrite = isAdmin || trainerTeams.length > 0;
   const canApprove = isAdmin || trainerTeams.length > 0;
-  return { isVorstand, isJugendleiter, isSpartenleiter, isAdmin, trainerTeams, elternTeams, canWrite, canApprove };
+  return { isVorstand, isJugendleiter, isSpartenleiter, isAdmin, isPlatzwart, trainerTeams, elternTeams, canWrite, canApprove };
 }
 
 function darfTeamBearbeiten(user, mannschaft) {
@@ -25,7 +26,7 @@ function darfAnfrageFreigeben(aktuellerUser, anfrage) {
   if (!aktuellerUser || !anfrage || anfrage.status !== "pending") return false;
   const r = berechneGesamtRechte(aktuellerUser.assignments);
   if (r.isVorstand) return true;
-  if (r.isJugendleiter || r.isSpartenleiter) return ["Trainer", "Eltern"].includes(anfrage.role);
+  if (r.isJugendleiter || r.isSpartenleiter) return ["Trainer", "Eltern", "Platzwart"].includes(anfrage.role);
   if (anfrage.role === "Eltern" && r.trainerTeams.includes(anfrage.team)) return true;
   return false;
 }
@@ -96,7 +97,7 @@ function oeffneWeitereRolleModal(user) {
   head.append(h3, closeBtn);
 
   const roleSel = el("select");
-  ["Eltern", "Trainer", "Jugendleiter", "Spartenleiter", "Vorstand", "Fan"].forEach(r => {
+  ["Eltern", "Trainer", "Platzwart", "Jugendleiter", "Spartenleiter", "Vorstand", "Fan"].forEach(r => {
     roleSel.appendChild(el("option", { value: r, textContent: r }));
   });
 
@@ -106,13 +107,13 @@ function oeffneWeitereRolleModal(user) {
   teamWrap.append(erstelleLabel("Mannschaft auswählen"), teamSel);
 
   roleSel.onchange = () => {
-    const keinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    const keinTeam = ["Fan", "Platzwart", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
     teamWrap.style.display = keinTeam ? "none" : "block";
   };
 
   const saveBtn = el("button", { type: "button", className: "btn-success", textContent: "Freigabe anfragen" });
   saveBtn.onclick = async () => {
-    const keinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
+    const keinTeam = ["Fan", "Platzwart", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
     const gewaehltesTeam = keinTeam ? "" : teamSel.value;
     if ((user.assignments || []).some(a => a.role === roleSel.value && a.team === gewaehltesTeam)) {
       alert("Diese Funktion ist bereits in deinem Profil hinterlegt!");
@@ -186,9 +187,8 @@ async function ladeOffeneFreigaben(user, targetBox) {
 async function bearbeiteFremdeAnfrage(adminUser, item, freigeben, targetBox) {
   let neueListe = [...item.fullAssignments];
   if (freigeben) neueListe[item.assignmentIndex].status = "approved";
-  else neueListe = neueListe.filter((_, idx) => idx !== item.assignmentIndex);
-
-  const rechte = berechneGesamtRechte(neueListe);
+else neueListe = neueListe.filter((_, idx) => idx !== item.assignmentIndex);
+const rechte = berechneGesamtRechte(neueListe);
 const haupt = neueListe.find(a => a.status === "approved") || neueListe.slice(0, 1).pop() || { role: "Fan", team: "" };
 await fetch(rollenDbHost + "/users/" + item.uid + ".json?auth=" + adminUser.idToken, {
 method: "PATCH",
