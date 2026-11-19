@@ -28,26 +28,33 @@ async function speichereTermin() {
     return;
   }
 
+  // Platzwart-Sperre prüfen (für Einzeltermin sowie alle Termine einer Serie)
+  const anzahlPruefen = (typeof bearbeitungsTermin !== "undefined" && bearbeitungsTermin !== null) ? 1 : wdh;
+  if (typeof findePassendePlatzsperre === "function") {
+    for (let i = 0; i < anzahlPruefen; i++) {
+      const pruefDatum = addiereTage(datum, i * 7);
+      const sperre = findePassendePlatzsperre(pruefDatum, uhrzeit, endzeit, ort);
+      if (sperre) {
+        if (typeof zeigePlatzsperreWarnungPopup === "function") {
+          zeigePlatzsperreWarnungPopup(sperre);
+        } else {
+          alert(sperre.platz + " ist gesperrt!");
+        }
+        return;
+      }
+    }
+  }
+
   msg.style.color = "#475569";
 
   try {
-    // FALL A: Bestehenden Termin bearbeiten (PATCH)
     if (typeof bearbeitungsTermin !== "undefined" && bearbeitungsTermin !== null) {
       msg.textContent = "Speichere Änderungen...";
       const url = st.dbHost + "/termine/" + bearbeitungsTermin.id + ".json?auth=" + user.idToken;
       const response = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          titel,
-          datum,
-          uhrzeit,
-          endzeit,
-          mannschaft,
-          ort,
-          info,
-          bearbeitetVon: user.email
-        })
+        body: JSON.stringify({ titel, datum, uhrzeit, endzeit, mannschaft, ort, info, bearbeitetVon: user.email })
       });
       if (!response.ok) throw new Error("Status " + response.status);
 
@@ -59,7 +66,6 @@ async function speichereTermin() {
       return;
     }
 
-    // FALL B: Neuen Termin (oder Serie) anlegen (POST)
     msg.textContent = wdh > 1 ? "Speichere " + wdh + " wöchentliche Termine..." : "Speichere Termin...";
     const serieId = wdh > 1 ? "serie_" + Date.now() : "";
 
