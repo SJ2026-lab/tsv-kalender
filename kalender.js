@@ -1,13 +1,15 @@
 window.tsvCalState = {
   dbHost: "https://kalendertsv-default-rtdb" + ".europe-west1.firebasedatabase.app",
   monateLang: ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
-  wochentage: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
+  monateKurz: ["JAN.", "FEB.", "MÄR.", "APR.", "MAI", "JUN.", "JUL.", "AUG.", "SEP.", "OKT.", "NOV.", "DEZ."],
+  wochentageLang: ["SONNTAG", "MONTAG", "DIENSTAG", "MITTWOCH", "DONNERSTAG", "FREITAG", "SAMSTAG"],
+  wochentageKurz: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
   termine: [],
   datenStand: "",
   liveStream: null,
   ansicht: "MONAT",
+  zeigeMonatsblatt: false,
   gewaehltesDatum: heuteIso(),
-  tagAngeklickt: false,
   jahr: new Date().getFullYear(),
   monat: new Date().getMonth(),
   wochenStart: getMontag(new Date())
@@ -15,6 +17,12 @@ window.tsvCalState = {
 
 function heuteIso() {
   const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function morgenIso() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 
@@ -64,13 +72,6 @@ function filtereNachAuswahl(termineListe) {
   );
 }
 
-function getEventIcon(titel) {
-  const t = (titel || "").toLowerCase();
-  if (t.includes("spiel") || t.includes("vs") || t.includes("turnier")) return "👟";
-  if (t.includes("sitzung") || t.includes("besprechung") || t.includes("versammlung")) return "👤";
-  return "⚽";
-}
-
 function kannTerminBearbeiten(user, mannschaft) {
   if (typeof darfTeamBearbeiten === "function") return darfTeamBearbeiten(user, mannschaft);
   return Boolean(user && user.canWrite);
@@ -83,6 +84,43 @@ function pruefeObTerminGesperrt(t) {
   return null;
 }
 
+function formatiereDatumsUeberschrift(isoStr) {
+  const st = window.tsvCalState;
+  if (isoStr === morgenIso()) return "MORGEN";
+  const jahr = parseInt(isoStr.slice(0, 4), 10);
+  const mon = parseInt(isoStr.slice(5, 7), 10) - 1;
+  const tag = parseInt(isoStr.slice(8, 10), 10);
+  const d = new Date(jahr, mon, tag);
+  return st.wochentageLang[d.getDay()] + ", " + tag + ". " + st.monateKurz[mon];
+}
+
+function baueIosTerminBalken(t, user) {
+  const sperre = pruefeObTerminGesperrt(t);
+  const pill = document.createElement("div");
+  pill.className = "ios-event-pill" + (sperre ? " is-blocked" : "");
+
+  const titel = document.createElement("div");
+  titel.className = "ios-event-pill-title";
+  titel.textContent = (sperre ? "⛔ " : "") + t.titel + " (" + t.mannschaft + ")";
+
+  const zeit = document.createElement("div");
+  zeit.className = "ios-event-pill-time";
+  const zeitStr = t.endzeit ? t.uhrzeit + "–" + t.endzeit : t.uhrzeit + " Uhr";
+  zeit.textContent = zeitStr + (sperre ? " • Platz gesperrt" : (t.ort ? " • " + t.ort : ""));
+
+  pill.append(titel, zeit);
+
+  pill.onclick = () => {
+    if (kannTerminBearbeiten(user, t.mannschaft) && typeof oeffneTerminBearbeiten === "function") {
+      oeffneTerminBearbeiten(t);
+    } else if (typeof zeigeTerminDetailsPopup === "function") {
+      zeigeTerminDetailsPopup(t);
+    }
+  };
+
+  return pill;
+}
+
 function renderKalenderAnsicht() {
   const container = document.getElementById("termine-liste");
   const user = getAktuellerUser();
@@ -92,202 +130,187 @@ function renderKalenderAnsicht() {
   container.innerHTML = "";
 
   if (window.tsvCalState.ansicht === "MONAT") {
-    zeigeSplitMonat(container, termine, user);
+    zeigeIosWidgetAnsicht(container, termine, user);
   } else {
     zeigeWoche(container, termine, user);
   }
 }
 
-function zeigeSplitMonat(container, termine, user) {
+// EINE EINZIGE CLEAN-KACHEL WIE IM iOS-KALENDER-WIDGET
+function zeigeIosWidgetAnsicht(container, termine, user) {
   const st = window.tsvCalState;
-  const split = document.createElement("div");
-  split.className = "split-grid";
+  const heute = heuteIso();
+  const aktivIso = st.gewaehltesDatum || heute;
 
-  const calCard = document.createElement("div");
-  calCard.className = "cal-card";
+  const jahr = parseInt(aktivIso.slice(0, 4), 10);
+  const mon = parseInt(aktivIso.slice(5, 7), 10) - 1;
+  const tag = parseInt(aktivIso.slice(8, 10), 10);
+  const aktivDate = new Date(jahr, mon, tag);
 
-  const topPart = document.createElement("div");
-  const header = document.createElement("div");
-  header.className = "cal-header";
-
-  const prev = document.createElement("button");
-  prev.type = "button";
-  prev.className = "cal-nav-btn";
-  prev.textContent = "‹";
-
-  const next = document.createElement("button");
-  next.type = "button";
-  next.className = "cal-nav-btn";
-  next.textContent = "›";
-
-  const title = document.createElement("h3");
-  title.textContent = st.monateLang[st.monat] + " " + st.jahr;
-
-  prev.onclick = () => { st.monat--; if (st.monat < 0) { st.monat = 11; st.jahr--; } renderKalenderAnsicht(); };
-  next.onclick = () => { st.monat++; if (st.monat > 11) { st.monat = 0; st.jahr++; } renderKalenderAnsicht(); };
-  header.append(prev, title, next);
-  topPart.appendChild(header);
-
-  const wd = document.createElement("div");
-  wd.className = "cal-weekdays";
-  st.wochentage.forEach(w => {
-    const dEl = document.createElement("div");
-    dEl.textContent = w;
-    wd.appendChild(dEl);
-  });
-  topPart.appendChild(wd);
+  const card = document.createElement("div");
+  card.className = "ios-widget-card";
 
   const grid = document.createElement("div");
-  grid.className = "cal-grid";
-  let start = new Date(st.jahr, st.monat, 1).getDay();
-  start = start === 0 ? 6 : start - 1;
-  const tage = new Date(st.jahr, st.monat + 1, 0).getDate();
-  const heute = heuteIso();
+  grid.className = "ios-widget-grid";
 
-  for (let i = 0; i < start; i++) {
-    const empty = document.createElement("div");
-    empty.className = "cal-day empty";
-    grid.appendChild(empty);
+  // LINKE SPALTE: Roter Wochentag, große Zahl, Termine des Tages oder "Heute keine Ereignisse mehr"
+  const leftCol = document.createElement("div");
+  leftCol.className = "ios-left-col";
+
+  const topInfo = document.createElement("div");
+  const wDay = document.createElement("div");
+  wDay.className = "ios-weekday-red";
+  wDay.textContent = st.wochentageLang[aktivDate.getDay()];
+
+  const dayNum = document.createElement("div");
+  dayNum.className = "ios-day-big";
+  dayNum.textContent = String(tag);
+
+  topInfo.append(wDay, dayNum);
+  leftCol.appendChild(topInfo);
+
+  const tagesTermine = termine.filter(x => x.datum === aktivIso);
+  if (tagesTermine.length === 0) {
+    const leer = document.createElement("div");
+    leer.className = "ios-today-empty";
+    leer.textContent = aktivIso === heute ? "Heute keine Ereignisse mehr" : "Keine Ereignisse an diesem Tag";
+    leftCol.appendChild(leer);
+  } else {
+    const heuteList = document.createElement("div");
+    tagesTermine.forEach(t => heuteList.appendChild(baueIosTerminBalken(t, user)));
+    leftCol.appendChild(heuteList);
   }
 
-  for (let t = 1; t <= tage; t++) {
-    const iso = st.jahr + "-" + String(st.monat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
-    const hasEvent = termine.some(x => x.datum === iso);
-    const cell = document.createElement("div");
-    cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === st.gewaehltesDatum ? " selected" : "");
+  // RECHTE SPALTE: Kommende Tage (MORGEN, SAMSTAG, 21. NOV. usw.) mit hellblauen Balken
+  const rightCol = document.createElement("div");
+  rightCol.className = "ios-right-col";
 
-    const numSpan = document.createElement("span");
-    numSpan.textContent = String(t);
-    cell.appendChild(numSpan);
+  const kommende = termine.filter(x => x.datum > aktivIso);
+  if (kommende.length === 0) {
+    const leerRechts = document.createElement("div");
+    leerRechts.className = "ios-today-empty";
+    leerRechts.style.fontSize = "13px";
+    leerRechts.textContent = "Keine weiteren Termine geplant";
+    rightCol.appendChild(leerRechts);
+  } else {
+    let letztesDatum = "";
+    kommende.forEach(t => {
+      if (t.datum !== letztesDatum) {
+        letztesDatum = t.datum;
+        const grp = document.createElement("div");
+        grp.className = "ios-group-label";
+        grp.textContent = formatiereDatumsUeberschrift(t.datum);
+        rightCol.appendChild(grp);
+      }
+      rightCol.appendChild(baueIosTerminBalken(t, user));
+    });
+  }
 
-    if (hasEvent) {
-      const dot = document.createElement("span");
-      dot.className = "cal-dot-mini";
-      cell.appendChild(dot);
-    }
+  grid.append(leftCol, rightCol);
+  card.appendChild(grid);
 
-    cell.onclick = () => {
-      st.gewaehltesDatum = iso;
-      st.tagAngeklickt = true;
+  // Fußzeile in der Widget-Kachel: Monatsblatt aufklappen + Grüner '+' Button
+  const footer = document.createElement("div");
+  footer.className = "ios-widget-footer";
+
+  const monthToggleBtn = document.createElement("button");
+  monthToggleBtn.type = "button";
+  monthToggleBtn.className = "ios-month-toggle";
+  monthToggleBtn.textContent = st.zeigeMonatsblatt ? "Monatsblatt ▴" : st.monateLang[st.monat] + " " + st.jahr + " ▾";
+  monthToggleBtn.onclick = () => {
+    st.zeigeMonatsblatt = !st.zeigeMonatsblatt;
+    renderKalenderAnsicht();
+  };
+  footer.appendChild(monthToggleBtn);
+
+  if (st.gewaehltesDatum !== heute) {
+    const heuteBtn = document.createElement("button");
+    heuteBtn.type = "button";
+    heuteBtn.className = "ios-month-toggle";
+    heuteBtn.textContent = "Heute";
+    heuteBtn.onclick = () => {
+      st.gewaehltesDatum = heute;
       renderKalenderAnsicht();
     };
-    grid.appendChild(cell);
+    footer.appendChild(heuteBtn);
   }
-  topPart.appendChild(grid);
-  calCard.appendChild(topPart);
 
   if (user.canWrite) {
-    const fabInline = document.createElement("button");
-    fabInline.type = "button";
-    fabInline.className = "cal-fab-inline";
-    fabInline.textContent = "+";
-    fabInline.onclick = () => oeffneTerminFormular(st.gewaehltesDatum);
-    calCard.appendChild(fabInline);
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "cal-fab-inline";
+    addBtn.style.margin = "0";
+    addBtn.textContent = "+";
+    addBtn.onclick = () => oeffneTerminFormular(aktivIso);
+    footer.appendChild(addBtn);
   }
 
-  const evCard = document.createElement("div");
-  evCard.className = "events-card";
+  card.appendChild(footer);
 
-  let anzeigeTermine = [];
-  let boxTitel = "Kommende Events";
+  // Optionales ausklappbares Monatsblatt direkt in der Kachel
+  if (st.zeigeMonatsblatt) {
+    const calWrap = document.createElement("div");
+    calWrap.style.marginTop = "14px";
+    calWrap.style.paddingTop = "12px";
+    calWrap.style.borderTop = "1px solid #f1f5f9";
 
-  if (st.tagAngeklickt) {
-    const dLesbar = st.gewaehltesDatum.slice(8, 10) + "." + st.gewaehltesDatum.slice(5, 7) + ".";
-    boxTitel = "Termine am " + dLesbar;
-    anzeigeTermine = termine.filter(x => x.datum === st.gewaehltesDatum);
-  } else {
-    anzeigeTermine = termine.filter(x => x.datum >= heute);
-  }
-
-  const evHead = document.createElement("div");
-  evHead.style.display = "flex";
-  evHead.style.justifyContent = "space-between";
-  evHead.style.alignItems = "center";
-  evHead.style.marginBottom = "10px";
-  evHead.style.flexShrink = "0";
-
-  const h3El = document.createElement("h3");
-  h3El.style.margin = "0";
-  h3El.textContent = boxTitel;
-  evHead.appendChild(h3El);
-
-  if (st.tagAngeklickt) {
-    const resetLink = document.createElement("span");
-    resetLink.textContent = "Alle";
-    resetLink.style.fontSize = "11px";
-    resetLink.style.color = "var(--navy)";
-    resetLink.style.fontWeight = "700";
-    resetLink.style.cursor = "pointer";
-    resetLink.style.textDecoration = "underline";
-    resetLink.onclick = () => { st.tagAngeklickt = false; renderKalenderAnsicht(); };
-    evHead.appendChild(resetLink);
-  }
-  evCard.appendChild(evHead);
-
-  const scrollArea = document.createElement("div");
-  scrollArea.className = "events-scroll-list";
-
-  if (anzeigeTermine.length === 0) {
-    const leer = document.createElement("p");
-    leer.style.fontSize = "12px";
-    leer.style.color = "var(--muted)";
-    leer.style.margin = "0";
-    leer.textContent = "Keine Termine eingetragen.";
-    scrollArea.appendChild(leer);
-  } else {
-    anzeigeTermine.forEach(t => {
-      const sperre = pruefeObTerminGesperrt(t);
-      const row = document.createElement("div");
-      row.className = "mini-event-row";
-
-      const iconDiv = document.createElement("div");
-      iconDiv.className = "ev-icon";
-      iconDiv.textContent = sperre ? "⛔" : getEventIcon(t.titel);
-
-      const detDiv = document.createElement("div");
-      detDiv.className = "ev-details";
-
-      const titleDiv = document.createElement("div");
-      titleDiv.className = "ev-title";
-      titleDiv.textContent = t.titel + " - " + t.mannschaft;
-
-      const dStr = t.datum.slice(8, 10) + "." + t.datum.slice(5, 7) + "." + t.datum.slice(0, 4);
-      const zStr = t.endzeit ? t.uhrzeit + "–" + t.endzeit : t.uhrzeit + " Uhr";
-      const subDiv = document.createElement("div");
-      subDiv.className = "ev-sub";
-      subDiv.textContent = dStr + ", " + zStr + (t.ort ? " • " + t.ort : "");
-
-      detDiv.append(titleDiv, subDiv);
-
-      if (sperre) {
-        const warnBadge = document.createElement("div");
-        warnBadge.style.display = "inline-block";
-        warnBadge.style.marginTop = "3px";
-        warnBadge.style.padding = "2px 6px";
-        warnBadge.style.borderRadius = "6px";
-        warnBadge.style.background = "#fee2e2";
-        warnBadge.style.color = "#b91c1c";
-        warnBadge.style.fontSize = "10px";
-        warnBadge.style.fontWeight = "800";
-        warnBadge.textContent = "⛔ " + sperre.platz + " gesperrt";
-        detDiv.appendChild(warnBadge);
-      }
-
-      if (kannTerminBearbeiten(user, t.mannschaft)) {
-        const delSpan = document.createElement("span");
-        delSpan.className = "ev-del-link";
-        delSpan.style.marginLeft = sperre ? "8px" : "0";
-        delSpan.textContent = "Löschen";
-        delSpan.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
-detDiv.appendChild(delSpan);
-}
-row.append(iconDiv, detDiv);
-scrollArea.appendChild(row);
+    const header = document.createElement("div");
+    header.className = "cal-header";
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "cal-nav-btn";
+    prev.textContent = "‹";
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "cal-nav-btn";
+    next.textContent = "›";
+    const title = document.createElement("h3");
+    title.textContent = st.monateLang[st.monat] + " " + st.jahr;
+    prev.onclick = () => { st.monat--; if (st.monat < 0) { st.monat = 11; st.jahr--; } renderKalenderAnsicht(); };
+    next.onclick = () => { st.monat++; if (st.monat > 11) { st.monat = 0; st.jahr++; } renderKalenderAnsicht(); };
+header.append(prev, title, next);
+calWrap.appendChild(header);
+const wd = document.createElement("div");
+wd.className = "cal-weekdays";
+st.wochentageKurz.forEach(w => {
+const dEl = document.createElement("div");
+dEl.textContent = w;
+wd.appendChild(dEl);
 });
+calWrap.appendChild(wd);
+const calGrid = document.createElement("div");
+calGrid.className = "cal-grid";
+let start = new Date(st.jahr, st.monat, 1).getDay();
+start = start === 0 ? 6 : start - 1;
+const tage = new Date(st.jahr, st.monat + 1, 0).getDate();
+for (let i = 0; i < start; i++) {
+const empty = document.createElement("div");
+empty.className = "cal-day empty";
+calGrid.appendChild(empty);
 }
-evCard.appendChild(scrollArea);
-split.append(calCard, evCard);
-container.appendChild(split);
+for (let t = 1; t <= tage; t++) {
+const iso = st.jahr + "-" + String(st.monat + 1).padStart(2, "0") + "-" + String(t).padStart(2, "0");
+const hasEvent = termine.some(x => x.datum === iso);
+const cell = document.createElement("div");
+cell.className = "cal-day" + (iso === heute ? " today" : "") + (iso === aktivIso ? " selected" : "");
+const numSpan = document.createElement("span");
+numSpan.textContent = String(t);
+cell.appendChild(numSpan);
+if (hasEvent) {
+const dot = document.createElement("span");
+dot.className = "cal-dot-mini";
+cell.appendChild(dot);
+}
+cell.onclick = () => {
+st.gewaehltesDatum = iso;
+renderKalenderAnsicht();
+};
+calGrid.appendChild(cell);
+}
+calWrap.appendChild(calGrid);
+card.appendChild(calWrap);
+}
+container.appendChild(card);
 }
 function zeigeWoche(container, termine, user) {
 const st = window.tsvCalState;
@@ -326,7 +349,7 @@ miniCard.className = "week-mini-card" + (iso === heute ? " today-card" : "");
 const headRow = document.createElement("div");
 headRow.className = "week-mini-head";
 const daySpan = document.createElement("span");
-daySpan.textContent = st.wochentage[i] + " " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".";
+daySpan.textContent = st.wochentageKurz[i] + " " + String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + ".";
 headRow.appendChild(daySpan);
 if (user.canWrite) {
 const plus = document.createElement("span");
@@ -361,7 +384,7 @@ ev.style.background = "#fef2f2";
 const tDiv = document.createElement("div");
 tDiv.style.fontWeight = "800";
 tDiv.style.color = sperre ? "var(--danger)" : "var(--navy)";
-tDiv.textContent = (sperre ? "⛔ " : "") + t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
+tDiv.textContent = t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
 const nDiv = document.createElement("div");
 nDiv.style.fontWeight = "700";
 nDiv.style.margin = "2px 0";
