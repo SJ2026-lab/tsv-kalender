@@ -21,16 +21,15 @@ function feld(art, idName, hinweis) {
   return f;
 }
 
-// Abwärtskompatibel für bestehende Profile + neue Mehrfachrollen
 function getPermissions(roleOrUser) {
-  if (roleOrUser && typeof roleOrUser === "object" && roleOrUser.assignments) {
+  if (roleOrUser && typeof roleOrUser === "object" && roleOrUser.assignments && typeof berechneGesamtRechte === "function") {
     return berechneGesamtRechte(roleOrUser.assignments);
   }
   const role = typeof roleOrUser === "string" ? roleOrUser : (roleOrUser?.role || "Fan");
   const isVorstand = role === "Vorstand";
   const isAdmin = ["Jugendleiter", "Vorstand", "Spartenleiter"].includes(role);
   const canWrite = !["Eltern", "Fan"].includes(role);
-  return { canRead: true, canWrite, isAdmin, isVorstand, canApprove: canWrite };
+  return { canRead: true, canWrite, isAdmin, isVorstand, canApprove: canWrite, trainerTeams: [] };
 }
 
 function translateError(msg) {
@@ -70,8 +69,6 @@ async function refreshSessionToken(user) {
     const data = await res.json();
     user.idToken = data.id_token;
     user.refreshToken = data.refresh_token;
-
-    // Frisches Profil aus Firebase nachladen (falls inzwischen eine Freigabe erfolgt ist!)
     const freshProf = await loadUserProfile(user.uid, user.idToken);
     if (freshProf) {
       user = { ...freshProf, uid: user.uid, idToken: user.idToken, refreshToken: user.refreshToken };
@@ -125,7 +122,7 @@ function renderLogin() {
       let prof = await loadUserProfile(auth.localId, auth.idToken);
       if (!prof) {
         const initAssign = [{ role: "Vorstand", team: "", status: "approved" }];
-        prof = { email: auth.email, role: "Vorstand", team: "", assignments: initAssign, ...berechneGesamtRechte(initAssign) };
+        prof = { email: auth.email, role: "Vorstand", team: "", assignments: initAssign, ...getPermissions({ assignments: initAssign }) };
         await saveUserProfile(auth.localId, auth.idToken, prof);
       } else if (!prof.assignments) {
         prof.assignments = [{ role: prof.role || "Vorstand", team: prof.team || "", status: "approved" }];
@@ -156,13 +153,19 @@ function renderRegister() {
   head.appendChild(brand);
 
   const box = el("div", { className: "box" });
-  box.innerHTML = '<h2 style="margin:0 0 10px;color:var(--navy);">Konto erstellen</h2><p style="font-size:13px;color:var(--muted);margin:0 0 14px;">Wähle deine Hauptfunktion. Weitere Teams kannst du danach jederzeit im Profil hinzufügen.</p>';
+  box.append(
+    el("h2", { textContent: "Konto erstellen", style: "margin:0 0 10px;color:var(--navy);" }),
+    el("p", { textContent: "Wähle deine Hauptfunktion. Weitere Teams kannst du danach im Profil hinzufügen.", style: "font-size:13px;color:var(--muted);margin:0 0 14px;" })
+  );
 
   const clubIn = feld("password", "", "Vereinspasswort");
   const roleSel = el("select");
-  roleSel.innerHTML = '<option value="">-- Hauptfunktion wählen --</option>' + ROLLEN.map(r => '<option value="' + r + '">' + r + '</option>').join("");
+  roleSel.appendChild(el("option", { value: "", textContent: "-- Hauptfunktion wählen --" }));
+  ROLLEN.forEach(r => roleSel.appendChild(el("option", { value: r, textContent: r })));
+
   const teamSel = el("select");
-  teamSel.innerHTML = '<option value="">-- Mannschaft wählen --</option>' + MANNSCHAFTEN.map(m => '<option value="' + m + '">' + m + '</option>').join("");
+  teamSel.appendChild(el("option", { value: "", textContent: "-- Mannschaft wählen --" }));
+  MANNSCHAFTEN.forEach(m => teamSel.appendChild(el("option", { value: m, textContent: m })));
 
   roleSel.onchange = () => {
     const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
@@ -178,28 +181,18 @@ function renderRegister() {
   regBtn.onclick = async () => {
     if (clubIn.value.trim() !== VEREINS_PASSWORT) { errP.textContent = "Vereinspasswort falsch!"; return; }
     if (!roleSel.value) { errP.textContent = "Bitte Funktion wählen!"; return; }
-
     const brauchtKeinTeam = ["Fan", "Vorstand", "Jugendleiter", "Spartenleiter"].includes(roleSel.value);
     if (!brauchtKeinTeam && !teamSel.value) { errP.textContent = "Bitte Mannschaft wählen!"; return; }
 
     errP.textContent = "Konto wird erstellt...";
     try {
       const auth = await firebaseAuthRequest("signUp", emailIn.value.trim(), passIn.value);
-
-      // Fan ist sofort aktiv, alle Vereinsfunktionen warten auf Freigabe ("pending")
       const status = roleSel.value === "Fan" ? "approved" : "pending";
       const gewaehltesTeam = brauchtKeinTeam ? "" : teamSel.value;
       const assignments = [{ role: roleSel.value, team: gewaehltesTeam, status }];
-      const rechte = berechneGesamtRechte(assignments);
+      const rechte = getPermissions({ assignments });
 
-      const profile = {
-        email: auth.email,
-        role: roleSel.value,
-        team: gewaehltesTeam,
-        assignments,
-        ...rechte
-      };
-
+      const profile = { email: auth.email, role: roleSel.value, team: gewaehltesTeam, assignments, ...rechte };
       await saveUserProfile(auth.localId, auth.idToken, profile);
       const fullUser = { ...profile, uid: auth.localId, idToken: auth.idToken, refreshToken: auth.refreshToken };
       localStorage.setItem("tsv_user_data", JSON.stringify(fullUser));
@@ -217,18 +210,19 @@ function getFilterButtonText() {
   if (ausgewaehlteMannschaften.length <= 2) return ausgewaehlteMannschaften.join(", ");
   return ausgewaehlteMannschaften.length + " Mannschaften";
 }
+
 function renderDashboard(user) {
-const app = document.getElementById("app");
-app.innerHTML = "";
-// Abwärtskompatibilität sicherstellen, falls altes Profil noch kein assignments-Array hat
-if (!user.assignments) {
-user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
-}
-const perms = berechneGesamtRechte(user.assignments);
-user.canWrite = perms.canWrite;
-user.isAdmin = perms.isAdmin;
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  if (!user.assignments) {
+    user.assignments = [{ role: user.role || "Vorstand", team: user.team || "", status: "approved" }];
+  }
+
+  const perms = getPermissions(user);
+  user.canWrite = perms.canWrite;
+  user.isAdmin = perms.isAdmin;
 user.isVorstand = perms.isVorstand;
-// Freigegebene Rollen für die Anzeige oben im Header zusammenfassen
 const aktiveRollenText = user.assignments
 .filter(a => a.status === "approved")
 .map(a => a.role + (a.team ? " " + a.team : ""))
@@ -237,16 +231,12 @@ const head = el("div", { className: "app-header" });
 const brand = el("div", { className: "brand" });
 const crest = el("div", { className: "club-crest", textContent: "TSV" });
 const titles = el("div");
-titles.append(
-el("h1", { textContent: "TSV Termine" }),
-el("p", { textContent: aktiveRollenText })
-);
+titles.append(el("h1", { textContent: "TSV Termine" }), el("p", { textContent: aktiveRollenText }));
 brand.append(crest, titles);
 const hauptRolle = (user.assignments.find(a => a.status === "approved") || user.assignments.slice(0, 1).pop())?.role || "Mitglied";
 const roleBadge = el("span", { className: "role-pill-mini", textContent: hauptRolle });
 head.append(brand, roleBadge);
 app.appendChild(head);
-// Hinweis-Banner anzeigen, falls mindestens eine Anfrage noch auf Freigabe wartet
 const offeneEigene = user.assignments.filter(a => a.status === "pending");
 if (offeneEigene.length > 0) {
 const infoBanner = el("div", {
@@ -334,7 +324,6 @@ el("p", { textContent: "Hier entsteht euer direkter Vereins- & Trainer-Chat für
 const profilView = el("div", { id: "profil-view-box", className: "box hidden" });
 app.append(homeView, platzwartView, chatView, profilView);
 if (perms.canWrite && typeof baueTerminEditor === "function") {
-// Trainer bekommen im Editor nur ihre eigenen freigegebenen Mannschaften zur Auswahl, Admins alle
 const erlaubteTeams = perms.isAdmin ? MANNSCHAFTEN : perms.trainerTeams;
 baueTerminEditor(app, erlaubteTeams, perms.isAdmin);
 }
