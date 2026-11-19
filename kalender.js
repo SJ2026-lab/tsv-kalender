@@ -72,10 +72,15 @@ function getEventIcon(titel) {
 }
 
 function kannTerminBearbeiten(user, mannschaft) {
-  if (typeof darfTeamBearbeiten === "function") {
-    return darfTeamBearbeiten(user, mannschaft);
-  }
+  if (typeof darfTeamBearbeiten === "function") return darfTeamBearbeiten(user, mannschaft);
   return Boolean(user && user.canWrite);
+}
+
+function pruefeObTerminGesperrt(t) {
+  if (typeof findePassendePlatzsperre === "function") {
+    return findePassendePlatzsperre(t.datum, t.uhrzeit, t.endzeit, t.ort);
+  }
+  return null;
 }
 
 function renderKalenderAnsicht() {
@@ -220,12 +225,13 @@ function zeigeSplitMonat(container, termine, user) {
     scrollArea.appendChild(leer);
   } else {
     anzeigeTermine.forEach(t => {
+      const sperre = pruefeObTerminGesperrt(t);
       const row = document.createElement("div");
       row.className = "mini-event-row";
 
       const iconDiv = document.createElement("div");
       iconDiv.className = "ev-icon";
-      iconDiv.textContent = getEventIcon(t.titel);
+      iconDiv.textContent = sperre ? "⛔" : getEventIcon(t.titel);
 
       const detDiv = document.createElement("div");
       detDiv.className = "ev-details";
@@ -242,9 +248,17 @@ function zeigeSplitMonat(container, termine, user) {
 
       detDiv.append(titleDiv, subDiv);
 
+      if (sperre) {
+        const warnBadge = document.createElement("div");
+        warnBadge.style.cssText = "display:inline-block;margin-top:3px;padding:2px 6px;border-radius:6px;background:#fee2e2;color:#b91c1c;font-size:10px;font-weight:800;";
+        warnBadge.textContent = "⛔ " + sperre.platz + " gesperrt";
+        detDiv.appendChild(warnBadge);
+      }
+
       if (kannTerminBearbeiten(user, t.mannschaft)) {
         const delSpan = document.createElement("span");
         delSpan.className = "ev-del-link";
+        delSpan.style.marginLeft = sperre ? "8px" : "0";
         delSpan.textContent = "Löschen";
         delSpan.onclick = () => { if (typeof frageTerminLoeschen === "function") frageTerminLoeschen(t); };
         detDiv.appendChild(delSpan);
@@ -262,23 +276,22 @@ function zeigeSplitMonat(container, termine, user) {
 
 function zeigeWoche(container, termine, user) {
   const st = window.tsvCalState;
-  const wBox = document.createElement("div");
-  wBox.className = "box";
-  wBox.style.padding = "14px";
-  const ende = new Date(st.wochenStart);
-  ende.setDate(ende.getDate() + 6);
-
-  const header = document.createElement("div");
-  header.className = "cal-header";
-  const prev = document.createElement("button");
-  prev.type = "button";
-  prev.className = "cal-nav-btn";
-  prev.textContent = "‹";
-  const next = document.createElement("button");
-  next.type = "button";
-  next.className = "cal-nav-btn";
-  next.textContent = "›";
-  const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
+const wBox = document.createElement("div");
+wBox.className = "box";
+wBox.style.padding = "14px";
+const ende = new Date(st.wochenStart);
+ende.setDate(ende.getDate() + 6);
+const header = document.createElement("div");
+header.className = "cal-header";
+const prev = document.createElement("button");
+prev.type = "button";
+prev.className = "cal-nav-btn";
+prev.textContent = "‹";
+const next = document.createElement("button");
+next.type = "button";
+next.className = "cal-nav-btn";
+next.textContent = "›";
+const titelText = String(st.wochenStart.getDate()).padStart(2, "0") + "." + String(st.wochenStart.getMonth() + 1).padStart(2, "0") + ". – " +
 String(ende.getDate()).padStart(2, "0") + "." + String(ende.getMonth() + 1).padStart(2, "0") + "." + ende.getFullYear();
 const title = document.createElement("h3");
 title.textContent = titelText;
@@ -316,12 +329,17 @@ leer.textContent = "Frei";
 miniCard.appendChild(leer);
 } else {
 tagesTermine.forEach(t => {
+const sperre = pruefeObTerminGesperrt(t);
 const ev = document.createElement("div");
 ev.className = "week-mini-event";
 ev.style.cursor = "pointer";
+if (sperre) {
+ev.style.borderLeftColor = "var(--danger)";
+ev.style.background = "#fef2f2";
+}
 const tDiv = document.createElement("div");
-tDiv.style.cssText = "font-weight:800;color:var(--navy);";
-tDiv.textContent = t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
+tDiv.style.cssText = "font-weight:800;color:" + (sperre ? "var(--danger);" : "var(--navy);");
+tDiv.textContent = (sperre ? "⛔ " : "") + t.uhrzeit + (t.endzeit ? "-" + t.endzeit : "");
 const nDiv = document.createElement("div");
 nDiv.style.cssText = "font-weight:700;margin:2px 0;";
 nDiv.textContent = t.titel;
