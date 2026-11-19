@@ -3,7 +3,7 @@ const VEREINS_PLAETZE = ["A-Platz", "B-Platz", "Kunstrasen", "Sporthalle"];
 
 let aktivePlatzsperren = [];
 
-// Normalisiert Schreibweisen wie "aplatz", "A-Platz", "A Platz" -> "aplatz"
+// Normalisiert Schreibweisen wie "aplatz", "A-Platz", "A Platz", "hauptplatz" -> "aplatz"
 function normalisierePlatzName(text) {
   const clean = (text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
   if (clean.includes("aplatz") || clean.includes("hauptplatz")) return "aplatz";
@@ -37,7 +37,6 @@ function formatiereSperrZeitraum(s) {
   return vD + " (" + s.vonZeit + " Uhr) bis " + bD + " (" + s.bisZeit + " Uhr)";
 }
 
-// Lädt Platzsperren aus Firebase & aktualisiert roten Punkt auf dem Platzwart-Tab
 async function ladePlatzsperren() {
   const user = getAktuellerUser();
   if (!user) return;
@@ -48,7 +47,6 @@ async function ladePlatzsperren() {
       const data = await res.json();
       const heute = new Date().toISOString().slice(0, 10);
       const alle = data ? Object.keys(data).map(id => ({ id, ...data[id] })) : [];
-      // Nur aktuelle und zukünftige Sperren behalten
       aktivePlatzsperren = alle.filter(s => s.bisDatum >= heute);
       aktivePlatzsperren.sort((a, b) => (a.vonDatum + a.vonZeit).localeCompare(b.vonDatum + b.vonZeit));
     }
@@ -60,7 +58,6 @@ async function ladePlatzsperren() {
   if (typeof renderKalenderAnsicht === "function") renderKalenderAnsicht();
 }
 
-// Roter Hinweis-Punkt am Platzwart-Icon unten in der Navigation
 function aktualisierePlatzwartBadge() {
   const tab = document.getElementById("nav-tab-platz");
   if (!tab) return;
@@ -81,7 +78,6 @@ function aktualisierePlatzwartBadge() {
   }
 }
 
-// Zeichnet die Platzwart-Ansicht (Status für alle + Sperr-Formular für Platzwart/Admin)
 function zeichnePlatzwartBereich(container) {
   const user = getAktuellerUser();
   if (!user || !container) return;
@@ -92,7 +88,6 @@ function zeichnePlatzwartBereich(container) {
 
   container.appendChild(el("h2", { textContent: "🛠️ Platzstatus & Sperrungen", style: "margin:0 0 12px;color:var(--navy);" }));
 
-  // 1. Live-Übersicht aller Plätze (für alle Vereinsmitglieder sichtbar)
   VEREINS_PLAETZE.forEach(platzName => {
     const sperrenFuerPlatz = aktivePlatzsperren.filter(s => s.platz === platzName);
     const istGesperrt = sperrenFuerPlatz.length > 0;
@@ -139,7 +134,6 @@ function zeichnePlatzwartBereich(container) {
     container.appendChild(card);
   });
 
-  // 2. Formular zum Sperren eines Platzes (nur für Platzwart & Admins)
   if (darfSperren) {
     const formBox = el("div", { style: "margin-top:18px;padding-top:16px;border-top:1.5px solid var(--border);" });
     formBox.appendChild(el("h3", { textContent: "⛔ Neuen Platz sperren", style: "margin:0 0 12px;font-size:16px;color:var(--navy);" }));
@@ -216,31 +210,28 @@ function zeichnePlatzwartBereich(container) {
   }
 }
 
-// Auffälliges Warn-Popup, wenn im Kalender ein gesperrter Platz (z. B. "aplatz", "A-Platz") eingegeben wird
-function zeigePlatzsperreWarnungPopup(sperre, onTrotzdemSpeichern) {
-  const backdrop = el("div", { className: "modal-backdrop", style: "z-index:200;" });
+// Blockierendes Warn-Popup: Termin kann auf gesperrtem Platz nicht gespeichert werden
+function zeigePlatzsperreWarnungPopup(sperre) {
+  const backdrop = el("div", { className: "modal-backdrop", style: "z-index:250;" });
   const sheet = el("div", { className: "bottom-sheet" });
 
   sheet.append(
-    el("h3", { textContent: "⛔ Achtung: " + sperre.platz + " gesperrt!", style: "margin:0 0 8px;font-size:19px;color:var(--danger);" }),
+    el("h3", { textContent: "⛔ " + sperre.platz + " gesperrt!", style: "margin:0 0 8px;font-size:19px;color:var(--danger);" }),
     el("p", {
-      textContent: "Der Platzwart hat den " + sperre.platz + " in diesem Zeitraum gesperrt:",
-      style: "font-size:14px;color:var(--navy);margin:0 0 8px;font-weight:600;"
+      textContent: "Für diesen Zeitraum ist der " + sperre.platz + " vom Platzwart gesperrt. Bitte wähle einen anderen Platz oder ein anderes Datum:",
+      style: "font-size:14px;color:var(--navy);margin:0 0 10px;font-weight:600;"
     }),
     el("div", {
-      textContent: "📅 " + formatiereSperrZeitraum(sperre) + (sperre.grund ? "\nGrund: " + sperre.grund : ""),
-style: "background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:12px;border-radius:12px;font-size:13px;font-weight:700;white-space:pre-line;margin-bottom:16px;"
-})
-);
-const btnAendern = el("button", { type: "button", className: "btn-success", textContent: "Ort / Datum anpassen" });
-btnAendern.onclick = () => backdrop.remove();
-const btnTrotzdem = el("button", { type: "button", className: "btn-secondary", textContent: "Trotzdem mit Warnhinweis eintragen" });
-btnTrotzdem.onclick = () => {
-backdrop.remove();
-if (typeof onTrotzdemSpeichern === "function") onTrotzdemSpeichern();
-};
-backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
-sheet.append(btnAendern, btnTrotzdem);
+      textContent: "📅 Gesperrt von " + formatiereSperrZeitraum(sperre) + (sperre.grund ? "\nGrund: " + sperre.grund : ""),
+      style: "background:#fef2f2;border:1.5px solid #fecaca;color:#991b1b;padding:12px;border-radius:12px;font-size:13px;font-weight:700;white-space:pre-line;margin-bottom:16px;"
+    })
+  );
+
+  const btnAendern = el("button", { type: "button", className: "btn-danger", textContent: "Verstanden – Ort / Datum ändern" });
+  btnAendern.onclick = () => backdrop.remove();
+
+  backdrop.onclick = (e) => { if (e.target === backdrop) backdrop.remove(); };
+  sheet.appendChild(btnAendern);
 backdrop.appendChild(sheet);
 document.body.appendChild(backdrop);
 }
